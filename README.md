@@ -32,16 +32,9 @@
 # Clone and run
 git clone https://github.com/ArqonAi/Pixelog.git
 cd Pixelog
-
-# Install dependencies
-cd frontend && npm install && cd ..
-go mod tidy
-
-# Run development servers
-npm run dev --prefix frontend &
 go run backend/cmd/server/main.go -dev
 
-# Open http://localhost:3000 (frontend) and http://localhost:3001 (backend)
+# Open http://localhost:8080
 ```
 
 ### Docker (Production)
