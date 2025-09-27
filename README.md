@@ -4,10 +4,15 @@
 
 **Pixelog v1.0.0** - SQLite-meets-YouTube for LLM memories. Convert diverse knowledge sources into portable, encrypted .pixe files.
 
-[![Deploy Status](https://github.com/pixelog/pixelog-go-v1/workflows/Deploy%20Pixelog%20to%20GitHub%20Pages/badge.svg)](https://github.com/pixelog/pixelog-go-v1/actions)
-[![Docker](https://img.shields.io/docker/automated/pixelog/pixelog-go-v1.svg)](https://github.com/pixelog/pixelog-go-v1/pkgs/container/pixelog-go-v1)
-[![Go Report Card](https://goreportcard.com/badge/github.com/pixelog/pixelog-go-v1)](https://goreportcard.com/report/github.com/pixelog/pixelog-go-v1)
+[![GitHub Actions](https://github.com/ArqonAi/Pixelog/workflows/CI/badge.svg)](https://github.com/ArqonAi/Pixelog/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ArqonAi/Pixelog)](https://goreportcard.com/report/github.com/ArqonAi/Pixelog)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/dl/)
+[![React](https://img.shields.io/badge/React-18+-61DAFB.svg?logo=react&logoColor=white)](https://reactjs.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg?logo=docker&logoColor=white)](https://hub.docker.com/)
+[![GitHub release](https://img.shields.io/github/v/release/ArqonAi/Pixelog?include_prereleases)](https://github.com/ArqonAi/Pixelog/releases)
+[![GitHub issues](https://img.shields.io/github/issues/ArqonAi/Pixelog)](https://github.com/ArqonAi/Pixelog/issues)
+[![GitHub stars](https://img.shields.io/github/stars/ArqonAi/Pixelog?style=social)](https://github.com/ArqonAi/Pixelog/stargazers)
 
 ## 🌟 Features
 
@@ -25,16 +30,28 @@
 ### Web Interface (Recommended)
 ```bash
 # Clone and run
-git clone https://github.com/pixelog/pixelog-go-v1.git
-cd pixelog-go-v1
+git clone https://github.com/ArqonAi/Pixelog.git
+cd Pixelog
+
+# Install dependencies
+cd frontend && npm install && cd ..
+go mod tidy
+
+# Run development servers
+npm run dev --prefix frontend &
 go run backend/cmd/server/main.go -dev
 
-# Open http://localhost:8080
+# Open http://localhost:3000 (frontend) and http://localhost:3001 (backend)
 ```
 
 ### Docker (Production)
 ```bash
-docker run -p 8080:8080 ghcr.io/pixelog/pixelog-go-v1:latest
+# Build and run with Docker Compose
+docker-compose up --build
+
+# Or run individual containers
+docker build -t pixelog .
+docker run -p 8080:8080 pixelog
 ```
 
 ### CLI Tool
@@ -139,7 +156,7 @@ type Config struct {
 version: '3.8'
 services:
   pixelog:
-    image: ghcr.io/pixelog/pixelog-go-v1:latest
+    image: ghcr.io/arqonai/pixelog:latest
     ports:
       - "8080:8080"
     volumes:
@@ -228,8 +245,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/pixelog/pixelog-go-v1/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/pixelog/pixelog-go-v1/discussions)
+- **Issues**: [GitHub Issues](https://github.com/ArqonAi/Pixelog/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ArqonAi/Pixelog/discussions)
 - **Security**: See [SECURITY.md](SECURITY.md)
 
 ---
