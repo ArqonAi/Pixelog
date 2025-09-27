@@ -49,7 +49,7 @@ func NewHandler(conv *converter.Converter, upgrader *websocket.Upgrader) *Handle
 func (h *Handler) ConvertFile(c *gin.Context) {
 	// Check file size limits
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 100<<20) // 100MB limit
-	
+
 	// Parse multipart form
 	form, err := c.MultipartForm()
 	if err != nil {
