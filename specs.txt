@@ -1,0 +1,163 @@
+## Current Analysis
+
+   What We Have:
+
+     * Empty Go project directory with only documentation files
+     * Go 1.25.1 installed and ready
+     * FFmpeg 7.1.1 available with necessary codecs (libx264, yuv420p)
+     * Clear project vision: Pixelog - a "SQLite-meets-YouTube for LLM memories"
+
+   Project Concept: Pixelog stores diverse knowledge sources (text, images, audio,
+   micro-videos) as compressed, encrypted video files using QR code streams that
+   are portable, streamable, and semantically searchable.
+
+   ## Development Specifications
+
+   ### Phase 1: Core Converter (Data-to-Frame Engine)
+
+   Project Structure Needed:
+
+     pixelog-go-v1/
+     ├── go.mod
+     ├── go.sum
+     ├── cmd/
+     │   └── pixelog/
+     │       └── main.go
+     ├── internal/
+     │   ├── ingestion/
+     │   │   └── serializer.go
+     │   ├── qr/
+     │   │   └── generator.go
+     │   ├── video/
+     │   │   └── packager.go
+     │   └── metadata/
+     │       └── manager.go
+     ├── pkg/
+     │   └── pixelog/
+     │       └── converter.go
+     ├── test/
+     │   └── testdata/
+     └── README.md
+
+   ### Required Dependencies:
+
+     1. QR Code Generation:
+       * github.com/skip2/go-qrcode - Popular, robust QR code library
+
+       * Alternative: github.com/yeqown/go-qrcode - More customizable
+     2. Base64 Encoding:
+       * Built-in encoding/base64 package
+     3. File Processing:
+       * Built-in os, io/ioutil, path/filepath packages
+     4. FFmpeg Integration:
+       * Built-in os/exec package for spawning ffmpeg processes
+     5. JSON/Metadata:
+       * Built-in encoding/json package
+
+   ### Core Modules to Implement:
+
+   #### 1. Data Ingestion & Serialization Module (internal/ingestion/)
+
+     type DataType int
+     const (
+         Text DataType = iota
+         Image
+         Audio
+         Video
+     )
+
+     type DataChunk struct {
+         ID          string
+         Type        DataType
+         ChunkIndex  int
+         Data        string // Base64 for binary, plain text for text
+         Metadata    map[string]interface{}
+         Timestamp   time.Time
+     }
+
+   Functions:
+
+     * IngestData(input interface{}) ([]DataChunk, error)
+     * SerializeToChunks(data []byte, chunkSize int) []string
+     * GenerateMetadata(dataType DataType, sourceID string) map[string]interface{}
+
+   #### 2. QR Code Generation Module (internal/qr/)
+
+     type QRGenerator struct {
+         OutputDir   string
+         Size        int
+         Quality     qrcode.RecoveryLevel
+     }
+
+   Functions:
+
+     * GenerateQRFrame(data string, frameNumber int) (string, error) // Returns file path
+     * BatchGenerateFrames(chunks []DataChunk) ([]string, error)
+
+   #### 3. Video Packaging Module (internal/video/)
+
+     type VideoConfig struct {
+         FrameRate    float64
+         Codec        string
+         PixelFormat  string
+         Quality      int
+         FastStart    bool
+     }
+
+   Functions:
+
+     * PackageFramesToVideo(framePaths []string, outputPath string, config VideoConfig) error
+     * AddSilentAudio(videoPath string) error
+     * OptimizeForStreaming(videoPath string) error
+
+   #### 4. Main Converter API (pkg/pixelog/)
+
+     type Converter struct {
+         TempDir     string
+         QRGenerator *qr.QRGenerator
+         VideoConfig video.VideoConfig
+     }
+
+     func (c *Converter) ConvertToPixelog(input interface{}, outputPath string) error
+
+   ### Technical Specifications:
+
+   #### QR Code Settings:
+
+     * Resolution: 512x512 pixels minimum for readability
+     * Error Correction: Medium level (Level M, ~15% recovery)
+     * Data Capacity: ~2,953 bytes per QR code (alphanumeric)
+     * Chunk Size: 2,800 bytes to leave room for metadata
+
+   #### Video Settings:
+
+     * Codec: libx264 with yuv420p pixel format
+     * Frame Rate: 0.5-1 FPS (configurable)
+     * Audio: Silent track using anullsrc
+     * Container: MP4 with fast-start enabled
+     * Compression: CRF 23 for good quality/size balance
+
+   #### File Processing:
+
+     * Binary Files: Base64 encoding with MIME type detection
+     * Text Files: UTF-8 encoding with chunk boundaries on word/sentence breaks
+     * Metadata: JSON format embedded in QR codes or separate metadata track
+
+   ### Implementation Priority:
+
+     1. Initialize Go module and basic project structure
+     2. Implement data ingestion and chunking
+     3. Add QR code generation
+     4. Create video packaging with FFmpeg
+     5. Build CLI interface
+     6. Add error handling and logging
+     7. Implement cleanup and temp file management
+
+   ### Next Steps Required:
+
+     1. Project Initialization:  go mod init github.com/pixelog/pixelog-go-v1
+     2. Create the directory structure
+     3. Install dependencies
+     4. Implement core modules in order
+     5. Add comprehensive testing
+

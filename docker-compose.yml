@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  pixelog:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    volumes:
+      - pixelog_data:/app/output
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  pixelog_data:

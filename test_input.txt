@@ -1,0 +1,10 @@
+Hello, World!
+This is a test file for Pixelog conversion.
+
+🎯 Key features:
+- Convert files to QR code videos
+- Portable .pixe format
+- Web-based drag & drop interface
+- Real-time progress tracking
+
+Let's test the magic! ✨

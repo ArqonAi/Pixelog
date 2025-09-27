@@ -1,0 +1,37 @@
+Objective: Develop a robust, open-source application named Pixelog, serving as a "SQLite-meets-YouTube for LLM memories." It will store diverse knowledge sources (text, images, audio, micro-videos) as compressed, encrypted video files (QR code streams) that are portable, streamable, and semantically searchable. The application will be built using Go.
+
+Phase 1: The Core Converter (Data-to-Frame Engine)
+
+Goal: Implement the fundamental process of converting various data types into a stream of QR code video frames and packaging them into a low-footprint MP4 file.
+
+Tasks:
+
+Data Ingestion & Serialization Module:
+
+Input: Accept arbitrary data (string, image file path, audio file path, micro-video file path).
+
+Serialization: Convert input data into a standardized, chunked string format. For images/audio/video, use Base64 encoding. Ensure chunk sizes are optimized for QR code capacity.
+
+Metadata Generation: For each data chunk, generate associated metadata (original data type, chunk index, source identifier, timestamp).
+
+QR Code Generation Module:
+
+Dependency: Utilize a robust Go QR code library.
+
+Frame Output: For each serialized data chunk, generate a high-resolution QR code image (PNG format) and save it to a temporary directory. Name files systematically (e.g., frame_00001.png, frame_00002.png).
+
+Video Packaging Module:
+
+Dependency: Leverage child_process.spawn to interface with ffmpeg.
+
+Video Creation: Stitch the sequence of QR code images into a single MP4 video file.
+
+Codec: Prioritize libx264 with yuv420p pixel format for broad compatibility. Explore AV1 for future efficiency.
+
+Frame Rate: Use a very low frame rate (e.g., 0.5-1 FPS) to minimize file size, as the "video" is primarily a data container.
+
+Audio: Include a silent audio track (-an followed by a silent audio source or anullsrc) to ensure playback compatibility in standard media players.
+
+Optimization: Implement fast-start MP4 for efficient web streaming.
+
+Cleanup:

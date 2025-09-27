@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 dark:bg-gray-900 transition-colors duration-200;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center gap-2;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center gap-2;
+  }
+
+  .drag-zone {
+    @apply border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 transition-all duration-200;
+  }
+
+  .drag-zone.drag-over {
+    @apply border-primary-500 bg-primary-50 dark:bg-primary-900/20;
+  }
+
+  .progress-bar {
+    @apply bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden;
+  }
+
+  .progress-fill {
+    @apply bg-primary-500 h-full transition-all duration-300 ease-out;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-400 dark:bg-gray-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500 dark:bg-gray-500;
+}
