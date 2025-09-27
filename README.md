@@ -1,31 +1,30 @@
-# Pixelog - Knowledge Storage Platform 🚀
-
-![Pixelog Logo](logo.png)
+# Pixelog - Knowledge Storage Platform
 
 **Pixelog v1.0.0** - SQLite-meets-YouTube for LLM memories. Convert diverse knowledge sources into portable, encrypted .pixe files.
 
-[![GitHub Actions](https://github.com/ArqonAi/Pixelog/workflows/CI/badge.svg)](https://github.com/ArqonAi/Pixelog/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ArqonAi/Pixelog)](https://goreportcard.com/report/github.com/ArqonAi/Pixelog)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ArqonAi/Pixelog)](https://goreportcard.com/report/github.com/ArqonAi/Pixelog)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/dl/)
 [![React](https://img.shields.io/badge/React-18+-61DAFB.svg?logo=react&logoColor=white)](https://reactjs.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg?logo=docker&logoColor=white)](https://hub.docker.com/)
+
+[![GitHub Actions](https://github.com/ArqonAi/Pixelog/workflows/CI/badge.svg)](https://github.com/ArqonAi/Pixelog/actions)
 [![GitHub release](https://img.shields.io/github/v/release/ArqonAi/Pixelog?include_prereleases)](https://github.com/ArqonAi/Pixelog/releases)
 [![GitHub issues](https://img.shields.io/github/issues/ArqonAi/Pixelog)](https://github.com/ArqonAi/Pixelog/issues)
 [![GitHub stars](https://img.shields.io/github/stars/ArqonAi/Pixelog?style=social)](https://github.com/ArqonAi/Pixelog/stargazers)
 
-## 🌟 Features
+## Features
 
-- **🔒 Encrypted & Compressed** - Store data as QR-encoded video streams
-- **📱 Portable & Streamable** - Access your knowledge anywhere
-- **🎯 Drag & Drop Interface** - Intuitive web-based GUI
-- **⚡ Real-time Progress** - WebSocket-powered conversion tracking
-- **🔍 Semantic Search** - AI-powered content discovery (coming soon)
-- **🌐 PWA Ready** - Install as desktop/mobile app
-- **🐳 Docker Support** - One-command deployment
-- **🔧 CLI Tool** - Command-line interface for automation
+- ** Encrypted & Compressed** - Store data as QR-encoded video streams
+- ** Portable & Streamable** - Access your knowledge anywhere
+- ** Drag & Drop Interface** - Intuitive web-based GUI
+- ** Real-time Progress** - WebSocket-powered conversion tracking
+- ** Semantic Search** - AI-powered content discovery (coming soon)
+- ** PWA Ready** - Install as desktop/mobile app
+- ** Docker Support** - One-command deployment
+- ** CLI Tool** - Command-line interface for automation
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Web Interface (Recommended)
 ```bash
@@ -63,7 +62,7 @@ go build -o pixelog backend/cmd/pixelog/main.go
 ./pixelog -list -input knowledge.pixe
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 ### Backend (Go)
 - **CLI Tool** - Command-line interface for batch processing
@@ -87,7 +86,7 @@ go build -o pixelog backend/cmd/pixelog/main.go
 4. **Compression** - Silent audio track + fast-start optimization
 5. **Storage** - Portable .pixe files ready for streaming/sharing
 
-## 🛠️ Development
+## Development
 
 ### Prerequisites
 - Go 1.21+
@@ -111,7 +110,7 @@ go build -o pixelog-server backend/cmd/server/main.go
 go build -o pixelog-cli backend/cmd/pixelog/main.go
 ```
 
-## 📊 API Endpoints
+## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -167,7 +166,7 @@ docker build -t pixelog .
 docker run -p 8080:8080 pixelog
 ```
 
-## 🔒 Security
+## Security
 
 - **Rate limiting** - 60 requests per minute per IP
 - **File size limits** - 100MB per file maximum
@@ -176,7 +175,7 @@ docker run -p 8080:8080 pixelog
 - **Input validation** - All user inputs sanitized
 - **Non-root container** - Docker runs as unprivileged user
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Backend tests
@@ -189,7 +188,7 @@ curl -X POST http://localhost:8080/api/v1/health
 docker ps --format "table {{.Names}}\t{{.Status}}"
 ```
 
-## 📝 File Format (.pixe)
+## File Format (.pixe)
 
 ```
 .pixe file structure:
@@ -201,14 +200,14 @@ docker ps --format "table {{.Names}}\t{{.Status}}"
 └── Container metadata (MP4 headers)
 ```
 
-## 📈 Performance
+## Performance
 
 - **Compression**: ~60% size reduction vs raw files
 - **Speed**: 1-10MB/sec conversion (depends on file type)
 - **Memory**: <100MB RAM usage during conversion
 - **Storage**: Minimal disk space (temporary files cleaned)
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
@@ -216,18 +215,18 @@ docker ps --format "table {{.Names}}\t{{.Status}}"
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **FFmpeg** - Powerful multimedia framework
 - **Go Community** - Excellent libraries and tools
 - **React Community** - Modern frontend ecosystem
 - **QR Code Pioneers** - Data encoding innovation
 
-## 🔮 Roadmap
+## Roadmap
 
 - [ ] **Semantic Search** - Vector embeddings for content discovery
 - [ ] **Encryption** - AES-256 encryption for sensitive data
@@ -236,7 +235,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] **Cloud Storage** - S3/GCS integration
 - [ ] **Plugin System** - Custom file processors
 
-## 📞 Support
+##  Support
 
 - **Issues**: [GitHub Issues](https://github.com/ArqonAi/Pixelog/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/ArqonAi/Pixelog/discussions)
@@ -244,6 +243,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Built with ❤️ by the Pixelog team**
+**Built with ❤️ by the Pixelog/Arqon team**
 
 ⭐ **Star this repository if you find it useful!** ⭐
