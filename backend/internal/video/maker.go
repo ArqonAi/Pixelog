@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/pixelog/pixelog-go-v1/backend/pkg/config"
+	"github.com/ArqonAi/Pixelog/backend/pkg/config"
 )
 
 type Maker struct{}

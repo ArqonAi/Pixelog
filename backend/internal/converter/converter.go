@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pixelog/pixelog-go-v1/backend/internal/qr"
-	"github.com/pixelog/pixelog-go-v1/backend/internal/video"
-	"github.com/pixelog/pixelog-go-v1/backend/pkg/config"
+	"github.com/ArqonAi/Pixelog/backend/internal/qr"
+	"github.com/ArqonAi/Pixelog/backend/internal/video"
+	"github.com/ArqonAi/Pixelog/backend/pkg/config"
 )
 
 type Converter struct {

@@ -10,7 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/pixelog/pixelog-go-v1/backend/internal/converter"
+	"github.com/ArqonAi/Pixelog/backend/internal/converter"
 )
 
 type Handler struct {
