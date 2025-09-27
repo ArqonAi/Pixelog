@@ -15,14 +15,14 @@
 
 ## Features
 
-- ** Encrypted & Compressed** - Store data as QR-encoded video streams
-- ** Portable & Streamable** - Access your knowledge anywhere
-- ** Drag & Drop Interface** - Intuitive web-based GUI
-- ** Real-time Progress** - WebSocket-powered conversion tracking
-- ** Semantic Search** - AI-powered content discovery (coming soon)
-- ** PWA Ready** - Install as desktop/mobile app
-- ** Docker Support** - One-command deployment
-- ** CLI Tool** - Command-line interface for automation
+- **Encrypted & Compressed** - Store data as QR-encoded video streams
+- **Portable & Streamable** - Access your knowledge anywhere
+- **Drag & Drop Interface** - Intuitive web-based GUI
+- **Real-time Progress** - WebSocket-powered conversion tracking
+- **Semantic Search** - AI-powered content discovery (coming soon)
+- **PWA Ready** - Install as desktop/mobile app
+- **Docker Support** - One-command deployment
+- **CLI Tool** - Command-line interface for automation
 
 ## Quick Start
 
