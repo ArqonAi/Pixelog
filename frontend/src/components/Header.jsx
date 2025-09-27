@@ -36,7 +36,7 @@ const Header = () => {
             </div>
             
             <a
-              href="https://github.com/pixelog/pixelog-go-v1"
+              href="https://github.com/ArqonAi/Pixelog"
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"

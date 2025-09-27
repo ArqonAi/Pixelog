@@ -155,7 +155,7 @@
 
    ### Next Steps Required:
 
-     1. Project Initialization:  go mod init github.com/pixelog/pixelog-go-v1
+     1. Project Initialization:  go mod init github.com/ArqonAi/Pixelog
      2. Create the directory structure
      3. Install dependencies
      4. Implement core modules in order
