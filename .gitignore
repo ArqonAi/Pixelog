@@ -121,3 +121,7 @@ pixelog-*
 
 # Docker
 .dockerignore
+
+# Internal development files
+INTERNAL_ROADMAP.md
+test_*.go
