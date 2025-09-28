@@ -307,6 +307,51 @@ func (h *Handler) WebSocketHandler(c *gin.Context) {
 
 			if job.Status == "completed" || job.Status == "failed" {
 				return
+			}
+		}
+	}
+}
+
+// ExtractPixeFile extracts content from a .pixe file
+func (h *Handler) ExtractPixeFile(c *gin.Context) {
+	filename := c.Param("filename")
+	if filename == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Filename required"})
+		return
+	}
+
+	// Construct full path
+	pixePath := filepath.Join(h.converter.GetOutputDir(), filename)
+	if !strings.HasSuffix(pixePath, ".pixe") {
+		pixePath += ".pixe"
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(pixePath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+
+	// Create temporary output directory
+	outputDir, err := os.MkdirTemp("", "pixelog-extract-*")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create temp directory"})
+		return
+	}
+	defer os.RemoveAll(outputDir)
+
+	// Extract the data
+	err = h.converter.Extract(pixePath, outputDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Extraction failed: %v", err)})
+		return
+	}
+
+	// List extracted files
+	extractedFiles, err := filepath.Glob(filepath.Join(outputDir, "*"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list extracted files"})
+		return
 	}
 
 	// Return list of extracted files
@@ -316,9 +361,9 @@ func (h *Handler) WebSocketHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":        "Extraction completed",
+		"message":         "Extraction completed",
 		"extracted_files": fileList,
-		"output_dir":     outputDir,
+		"output_dir":      outputDir,
 	})
 }
 
@@ -331,7 +376,7 @@ func (h *Handler) ListPixeContents(c *gin.Context) {
 	}
 
 	// Construct full path
-	pixePath := filepath.Join(h.converter.config.OutputDir, filename)
+	pixePath := filepath.Join(h.converter.GetOutputDir(), filename)
 	if !strings.HasSuffix(pixePath, ".pixe") {
 		pixePath += ".pixe"
 	}

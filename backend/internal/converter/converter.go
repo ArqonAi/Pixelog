@@ -339,6 +339,10 @@ func (c *Converter) Cleanup() {
 	c.config.Cleanup()
 }
 
+func (c *Converter) GetOutputDir() string {
+	return c.config.OutputDir
+}
+
 func generateJobID() string {
 	return fmt.Sprintf("job_%d", time.Now().UnixNano())
 }

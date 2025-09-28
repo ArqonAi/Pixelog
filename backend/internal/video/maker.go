@@ -1,7 +1,6 @@
 package video
 
 import (
-	"bufio"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -157,7 +156,7 @@ func (m *Maker) ExtractData(inputPath, outputDir string) error {
 	}
 
 	// Reassemble each file
-	for hash, chunks := range fileChunks {
+	for _, chunks := range fileChunks {
 		if len(chunks) == 0 {
 			continue
 		}
