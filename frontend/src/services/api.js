@@ -1,4 +1,4 @@
-const API_BASE_URL = '/api/v1'
+const API_BASE_URL = '/api'
 
 class PixelogAPI {
   async convertFiles(files, onProgress) {
@@ -34,7 +34,7 @@ class PixelogAPI {
   }
 
   trackProgress(jobId, onProgress) {
-    const ws = new WebSocket(`ws://${window.location.host}/api/v1/ws/${jobId}`)
+    const ws = new WebSocket(`ws://${window.location.host}/api/ws/status/${jobId}`)
     
     ws.onmessage = (event) => {
       const progress = JSON.parse(event.data)
@@ -52,7 +52,7 @@ class PixelogAPI {
   }
 
   async getPixeFiles() {
-    const response = await fetch(`${API_BASE_URL}/pixefiles`)
+    const response = await fetch(`${API_BASE_URL}/files`)
     
     if (!response.ok) {
       throw new Error('Failed to fetch PixeFiles')
@@ -62,7 +62,7 @@ class PixelogAPI {
   }
 
   async deletePixeFile(fileId) {
-    const response = await fetch(`${API_BASE_URL}/pixefile/${fileId}`, {
+    const response = await fetch(`${API_BASE_URL}/files/${fileId}`, {
       method: 'DELETE'
     })
 
@@ -74,7 +74,7 @@ class PixelogAPI {
   }
 
   async downloadPixeFile(fileId) {
-    const response = await fetch(`${API_BASE_URL}/download/${fileId}`)
+    const response = await fetch(`${API_BASE_URL}/files/${fileId}`)
     
     if (!response.ok) {
       throw new Error('Failed to download file')
@@ -83,16 +83,9 @@ class PixelogAPI {
     return response.blob()
   }
 
-  async extractPixeFile(fileId, outputPath) {
-    const response = await fetch(`${API_BASE_URL}/extract`, {
+  async extractPixeFile(filename) {
+    const response = await fetch(`${API_BASE_URL}/extract/${filename}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        file_id: fileId,
-        output_path: outputPath
-      })
     })
 
     if (!response.ok) {
@@ -103,7 +96,7 @@ class PixelogAPI {
   }
 
   async searchContent(query) {
-    const response = await fetch(`${API_BASE_URL}/search`, {
+    const response = await fetch(`${API_BASE_URL}/search/query`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
