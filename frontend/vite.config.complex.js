@@ -1,8 +1,16 @@
+// frontend/vite.config.complex.js
+
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// IMPORTANT: Replace 'Pixelog' with your actual GitHub repository name if different.
+const repoName = 'Pixelog'; 
+
 export default defineConfig({
+  // FIX: Add the base path for GitHub Pages deployment
+  base: `/${repoName}/`, 
+
   plugins: [
     react(),
     VitePWA({
