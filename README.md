@@ -405,7 +405,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] **Cloud Storage** - S3/GCS/Azure integration framework ✨
 - [ ] **Plugin System** - Custom file processors
 - [ ] **Real-time Collaboration** - Multi-user workspace sharing
-- [ ] **Advanced OCR** - PDF and image text extraction
+- [ ] **Advanced OCR** - PDF and image text extraction [SECURITY.md](SECURITY.md)
 
 ##  Support
 

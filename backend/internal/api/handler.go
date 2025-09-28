@@ -307,9 +307,49 @@ func (h *Handler) WebSocketHandler(c *gin.Context) {
 
 			if job.Status == "completed" || job.Status == "failed" {
 				return
-			}
-		}
 	}
+
+	// Return list of extracted files
+	var fileList []string
+	for _, file := range extractedFiles {
+		fileList = append(fileList, filepath.Base(file))
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":        "Extraction completed",
+		"extracted_files": fileList,
+		"output_dir":     outputDir,
+	})
+}
+
+// ListPixeContents lists the contents of a .pixe file without extracting
+func (h *Handler) ListPixeContents(c *gin.Context) {
+	filename := c.Param("filename")
+	if filename == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Filename required"})
+		return
+	}
+
+	// Construct full path
+	pixePath := filepath.Join(h.converter.config.OutputDir, filename)
+	if !strings.HasSuffix(pixePath, ".pixe") {
+		pixePath += ".pixe"
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(pixePath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+
+	// List contents
+	contents, err := h.converter.ListContents(pixePath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to list contents: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"contents": contents})
 }
 
 func (h *Handler) ListPixeFiles(c *gin.Context) {
