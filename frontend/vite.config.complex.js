@@ -7,7 +7,7 @@ const repoName = 'Pixelog';
 
 export default defineConfig({
   // CRITICAL FIX: Base path set to /repository-name/
-  base: `/${repoName}/`, 
+  base: `./`, 
 
   plugins: [
     react(),
