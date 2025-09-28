@@ -78,7 +78,7 @@ go build -o pixelog backend/cmd/pixelog/main.go
 - **PWA Support** - Installable as desktop/mobile app
 - **File Management** - Upload, download, delete .pixe files
 
-## 📖 How It Works
+## How It Works
 
 1. **Data Ingestion** - Files are analyzed and chunked (2800 bytes per chunk)
 2. **QR Encoding** - Each chunk becomes a high-resolution QR code frame
@@ -123,7 +123,7 @@ go build -o pixelog-cli backend/cmd/pixelog/main.go
 | `DELETE` | `/api/v1/pixefile/:id` | Delete .pixe file |
 | `GET` | `/api/v1/health` | Health check |
 
-## 🔧 Configuration
+## Configuration
 
 ### Backend Config
 ```go
@@ -141,7 +141,7 @@ type Config struct {
 - **Container**: MP4 with fast-start optimization
 - **Compression**: CRF 23 for optimal quality/size balance
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
 ### Docker Compose
 ```yaml
