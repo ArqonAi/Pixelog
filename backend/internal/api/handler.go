@@ -5,17 +5,24 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/ArqonAi/Pixelog/backend/internal/converter"
+	"github.com/ArqonAi/Pixelog/backend/internal/crypto"
+	"github.com/ArqonAi/Pixelog/backend/internal/search"
+	"github.com/ArqonAi/Pixelog/backend/internal/storage"
 )
 
 type Handler struct {
-	converter *converter.Converter
-	upgrader  *websocket.Upgrader
+	converter  *converter.Converter
+	upgrader   *websocket.Upgrader
+	search     *search.SearchService
+	encryption *crypto.EncryptionService
+	cloud      *storage.CloudService
 }
 
 type ConvertRequest struct {
@@ -39,11 +46,106 @@ type PixeFile struct {
 	Path      string    `json:"path"`
 }
 
-func NewHandler(conv *converter.Converter, upgrader *websocket.Upgrader) *Handler {
+func NewHandler(conv *converter.Converter, upgrader *websocket.Upgrader, searchSvc *search.SearchService, encSvc *crypto.EncryptionService, cloudSvc *storage.CloudService) *Handler {
 	return &Handler{
-		converter: conv,
-		upgrader:  upgrader,
+		converter:  conv,
+		upgrader:   upgrader,
+		search:     searchSvc,
+		encryption: encSvc,
+		cloud:      cloudSvc,
 	}
+}
+
+// Search endpoints
+func (h *Handler) Search(c *gin.Context) {
+	if h.search == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Search service not available. Set OPENAI_API_KEY environment variable.",
+		})
+		return
+	}
+
+	var req search.SearchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	results, err := h.search.Search(c.Request.Context(), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"results": results,
+		"count":   len(results),
+	})
+}
+
+func (h *Handler) GetSimilar(c *gin.Context) {
+	if h.search == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Search service not available",
+		})
+		return
+	}
+
+	documentID := c.Param("id")
+	if documentID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "document ID required"})
+		return
+	}
+
+	limitStr := c.DefaultQuery("limit", "5")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		limit = 5
+	}
+
+	results, err := h.search.GetSimilarDocuments(c.Request.Context(), documentID, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"results": results,
+		"count":   len(results),
+	})
+}
+
+func (h *Handler) ListDocuments(c *gin.Context) {
+	if h.search == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Search service not available",
+		})
+		return
+	}
+
+	limitStr := c.DefaultQuery("limit", "20")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		limit = 20
+	}
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil {
+		offset = 0
+	}
+
+	documents, err := h.search.ListDocuments(c.Request.Context(), limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"documents": documents,
+		"count":     len(documents),
+	})
 }
 
 func (h *Handler) ConvertFile(c *gin.Context) {
@@ -114,6 +216,43 @@ func (h *Handler) ConvertFile(c *gin.Context) {
 
 		progressChan := make(chan converter.Progress, 10)
 		defer close(progressChan)
+
+		// Index files for search if search service is available
+		if h.search != nil {
+			for _, filePath := range uploadedFiles {
+				file, err := os.Open(filePath)
+				if err != nil {
+					continue // Skip files that can't be opened
+				}
+
+				// Check if file is supported for text extraction
+				if h.search.IsFileSupported(filepath.Base(filePath)) {
+					_, err = file.Seek(0, 0) // Reset file pointer
+					if err != nil {
+						file.Close()
+						continue
+					}
+
+					// Index the file
+					indexReq := &search.IndexRequest{
+						ID:       fmt.Sprintf("%s_%s", jobID, filepath.Base(filePath)),
+						Reader:   file,
+						Filename: filepath.Base(filePath),
+						Metadata: map[string]interface{}{
+							"job_id":     jobID,
+							"file_path":  filePath,
+							"indexed_at": time.Now(),
+						},
+					}
+
+					if err := h.search.IndexFile(c.Request.Context(), indexReq); err != nil {
+						// Log error but don't fail conversion
+						fmt.Printf("Failed to index file %s: %v\n", filePath, err)
+					}
+				}
+				file.Close()
+			}
+		}
 
 		if err := h.converter.Convert(inputPath, outputPath, progressChan); err != nil {
 			// Handle error (could be logged or stored for retrieval)

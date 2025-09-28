@@ -6,12 +6,14 @@ import DropZone from './components/DropZone'
 import ProgressModal from './components/ProgressModal'
 import FileList from './components/FileList'
 import Toast from './components/Toast'
+import SearchInterface from './components/SearchInterface'
 import { pixelogApi } from './services/api'
 
 function App() {
   const [isConverting, setIsConverting] = useState(false)
   const [conversionProgress, setConversionProgress] = useState(null)
   const [toast, setToast] = useState(null)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
 
   const { data: pixeFiles, refetch: refetchFiles } = useQuery({
     queryKey: ['pixeFiles'],
@@ -52,7 +54,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900">
-      <Header />
+      <Header onSearchClick={() => setIsSearchOpen(true)} />
       
       <main className="container mx-auto px-4 py-8 max-w-6xl">
         <motion.div
@@ -136,6 +138,11 @@ function App() {
           <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
         )}
       </AnimatePresence>
+
+      <SearchInterface 
+        isOpen={isSearchOpen} 
+        onClose={() => setIsSearchOpen(false)} 
+      />
     </div>
   )
 }

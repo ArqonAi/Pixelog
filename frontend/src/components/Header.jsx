@@ -1,8 +1,8 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Github, Heart, Star } from 'lucide-react'
+import { Github, Heart, Star, Search } from 'lucide-react'
 
-const Header = () => {
+const Header = ({ onSearchClick }) => {
   return (
     <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
       <div className="container mx-auto px-4 py-4">
@@ -34,6 +34,14 @@ const Header = () => {
               <Star className="w-4 h-4 text-yellow-500" />
               <span>Star on GitHub</span>
             </div>
+            
+            <button
+              onClick={onSearchClick}
+              className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              title="Semantic Search"
+            >
+              <Search className="w-5 h-5" />
+            </button>
             
             <a
               href="https://github.com/ArqonAi/Pixelog"

@@ -3,13 +3,81 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Pixelog - SQLite-meets-YouTube for LLM memories. Store knowledge as portable .pixe files." />
-    <meta name="theme-color" content="#6366f1" />
-    <title>Pixelog - Knowledge Storage</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    
+    <!-- SEO and Social Meta -->
+    <meta name="description" content="Pixelog - SQLite-meets-YouTube for LLM memories. Convert knowledge into portable, encrypted .pixe files with AI-powered semantic search." />
+    <meta name="keywords" content="knowledge management, file converter, AI search, semantic search, encryption, portable files" />
+    <meta name="author" content="ArqonAi" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://github.com/ArqonAi/Pixelog" />
+    <meta property="og:title" content="Pixelog - Knowledge Storage Platform" />
+    <meta property="og:description" content="Convert knowledge into portable, encrypted .pixe files with AI-powered semantic search" />
+    <meta property="og:image" content="/icons/icon-512x512.png" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://github.com/ArqonAi/Pixelog" />
+    <meta property="twitter:title" content="Pixelog - Knowledge Storage Platform" />
+    <meta property="twitter:description" content="Convert knowledge into portable, encrypted .pixe files with AI-powered semantic search" />
+    <meta property="twitter:image" content="/icons/icon-512x512.png" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Pixelog" />
+    <meta name="application-name" content="Pixelog" />
+    <meta name="msapplication-TileColor" content="#3b82f6" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    
+    <!-- Preload Critical Resources -->
+    <link rel="preload" href="/src/main.jsx" as="script" />
+    <link rel="preconnect" href="/api" />
+    
+    <title>Pixelog - Knowledge Storage Platform</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+      
+      // Handle app install prompt
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // Show install button or banner
+        console.log('App can be installed');
+      });
+    </script>
   </body>
 </html>
