@@ -26,7 +26,11 @@
   }
 
   .drag-zone.drag-over {
-    @apply border-primary-500 bg-primary-50 dark:bg-primary-900/20;
+    @apply border-primary-500 bg-primary-50;
+  }
+  
+  .dark .drag-zone.drag-over {
+    background-color: rgba(30, 58, 138, 0.2);
   }
 
   .progress-bar {
