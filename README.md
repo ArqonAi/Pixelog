@@ -9,7 +9,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg?logo=docker&logoColor=white)](https://hub.docker.com/)<br>
 [![Deploy Pixelog to GitHub Pages](https://github.com/ArqonAi/Pixelog/actions/workflows/deploy.yml/badge.svg)](https://github.com/ArqonAi/Pixelog/actions/workflows/deploy.yml)
 [![GitHub release](https://img.shields.io/github/v/release/ArqonAi/Pixelog?include_prereleases)](https://github.com/ArqonAi/Pixelog/releases)
-[![GitHub issues](https://img.shields.io/github/issues/ArqonAi/Pixelog)](https://github.com/ArqonAi/Pixelog/issues)
+[![GitHub issues](https://img.shields.io/github/issues/ArqonAi/Pixelog)](https://github.com/ArqonAi/Pixelog/issues)<br>
 [![GitHub stars](https://img.shields.io/github/stars/ArqonAi/Pixelog?style=social)](https://github.com/ArqonAi/Pixelog/stargazers)
 
 ## Features
