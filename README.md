@@ -7,7 +7,7 @@
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/dl/)
 [![React](https://img.shields.io/badge/React-18+-61DAFB.svg?logo=react&logoColor=white)](https://reactjs.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg?logo=docker&logoColor=white)](https://hub.docker.com/)
-
+[![Deploy Pixelog to GitHub Pages](https://github.com/ArqonAi/Pixelog/actions/workflows/deploy.yml/badge.svg)](https://github.com/ArqonAi/Pixelog/actions/workflows/deploy.yml)
 [![GitHub Actions](https://github.com/ArqonAi/Pixelog/workflows/CI/badge.svg)](https://github.com/ArqonAi/Pixelog/actions)
 [![GitHub release](https://img.shields.io/github/v/release/ArqonAi/Pixelog?include_prereleases)](https://github.com/ArqonAi/Pixelog/releases)
 [![GitHub issues](https://img.shields.io/github/issues/ArqonAi/Pixelog)](https://github.com/ArqonAi/Pixelog/issues)
