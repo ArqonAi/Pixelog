@@ -45,7 +45,7 @@ const CloudStorage: React.FC<CloudStorageProps> = ({ className = '' }) => {
     try {
       setIsLoading(true)
       // Check if cloud endpoints are available by testing the health endpoint first
-      const healthResponse = await fetch('/api/health')
+      const healthResponse = await fetch('/health')
       const health = await healthResponse.json()
       
       if (!health.cloud_enabled) {
@@ -231,7 +231,7 @@ const CloudStorage: React.FC<CloudStorageProps> = ({ className = '' }) => {
               <div className="cyber-bg-panel p-6 rounded-lg text-center">
                 <Upload className="w-12 h-12 cyber-text-cyber mx-auto mb-4" />
                 <p className="cyber-body cyber-text-secondary mb-4">
-                  Select .pixe files to backup to {selectedProviderData.name}
+                  Select .pixe files to backup to {selectedProviderData?.name || 'cloud storage'}
                 </p>
                 <button 
                   className="cyber-btn px-6 py-3 text-sm w-full mb-4"

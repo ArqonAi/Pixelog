@@ -95,7 +95,10 @@ const CloudConfigModal: React.FC<CloudConfigModalProps> = ({
     try {
       const config = getProviderConfig()
       const result = await cloudApi.testConnection(config)
-      setTestResult(result)
+      setTestResult({
+        success: result.success,
+        message: result.message || (result.success ? 'Connection successful' : 'Connection failed')
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Connection test failed')
     } finally {
