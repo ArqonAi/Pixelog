@@ -126,7 +126,6 @@ function App(): JSX.Element {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h1 className="cyber-h1 text-4xl md:text-5xl mb-4">Pixelog</h1>
           <p className="cyber-body text-xl cyber-text-secondary mb-2">
             Convert files into portable, searchable video archives
           </p>

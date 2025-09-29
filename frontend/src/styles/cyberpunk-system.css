@@ -35,9 +35,9 @@
   --text-disabled: #404040;
   
   /* Effects */
-  --glow-primary: 0 0 10px var(--cyber-primary);
-  --glow-secondary: 0 0 8px var(--cyber-secondary);
-  --glow-danger: 0 0 8px var(--cyber-danger);
+  --glow-primary: none;
+  --glow-secondary: none;
+  --glow-danger: none;
   --scan-gradient: linear-gradient(90deg, transparent, var(--cyber-primary), transparent);
   
   /* Typography */
@@ -109,7 +109,7 @@ body {
   right: 0;
   height: 2px;
   background: var(--scan-gradient);
-  animation: scanline 3s linear infinite;
+  animation: none;
   z-index: 1;
 }
 
@@ -149,19 +149,19 @@ body {
 .classification-confidential {
   color: var(--confidential);
   background: rgba(255, 176, 0, 0.1);
-  animation: pulse-glow-amber 2s ease-in-out infinite;
+  animation: none;
 }
 
 .classification-secret {
   color: var(--secret);
   background: rgba(255, 0, 128, 0.1);
-  animation: pulse-glow-pink 2s ease-in-out infinite;
+  animation: none;
 }
 
 .classification-top-secret {
   color: var(--top-secret);
   background: rgba(255, 0, 64, 0.1);
-  animation: pulse-glow-red 2s ease-in-out infinite;
+  animation: none;
 }
 
 /* Cyber Buttons */
@@ -279,7 +279,7 @@ body {
   right: 0;
   bottom: 0;
   background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
-  animation: progress-shimmer 2s ease-in-out infinite;
+  animation: none;
 }
 
 /* Input Fields */
