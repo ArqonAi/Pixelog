@@ -482,7 +482,7 @@ class CloudStorageAPI {
     })
     
     if (!response.ok) {
-      throw new PixelogAPIError(`Upload failed: ${response.statusText}`)
+      throw new PixelogAPIError(`Upload failed: ${response.statusText}`, response.status)
     }
     
     return response.json()

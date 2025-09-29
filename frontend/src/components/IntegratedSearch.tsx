@@ -86,82 +86,83 @@ const IntegratedSearch: React.FC<IntegratedSearchProps> = ({ className = '' }) =
     const startTime = Date.now()
     
     // Simple semantic matching
-    const results: SearchHit[] = files
-      .map(file => {
-        let score = 0
-        let highlights: string[] = []
-        let contentPreview = ''
-        
-        // Filename matching
-        if (file.name.toLowerCase().includes(searchQuery)) {
-          score += 0.9
-          highlights.push(searchQuery)
-          contentPreview = `File: ${file.name}`
+    const searchResults: SearchHit[] = []
+    
+    files.forEach(file => {
+      let score = 0
+      const highlights: string[] = []
+      let contentPreview = ''
+      
+      // Filename matching
+      if (file.name.toLowerCase().includes(searchQuery)) {
+        score += 0.9
+        highlights.push(searchQuery)
+        contentPreview = `File: ${file.name}`
+      }
+      
+      // Path matching  
+      if (file.path.toLowerCase().includes(searchQuery)) {
+        score += 0.7
+        if (!highlights.includes(searchQuery)) highlights.push(searchQuery)
+        contentPreview = contentPreview || `Path: ${file.path}`
+      }
+      
+      // Semantic matching for common terms
+      const semanticMatches = {
+        'photo': ['jpg', 'jpeg', 'png', 'gif', 'image', 'pic'],
+        'document': ['pdf', 'doc', 'docx', 'txt', 'text'],
+        'video': ['mp4', 'mov', 'avi', 'mkv', 'video'],
+        'audio': ['mp3', 'wav', 'flac', 'music', 'sound'],
+        'archive': ['zip', 'rar', '7z', 'tar', 'archive'],
+        'spreadsheet': ['xls', 'xlsx', 'csv', 'sheet'],
+        'presentation': ['ppt', 'pptx', 'slide'],
+        'code': ['js', 'ts', 'py', 'java', 'cpp', 'code', 'src'],
+        'tax': ['tax', 'w2', '1099', 'receipt', 'irs'],
+        'work': ['work', 'office', 'business', 'meeting', 'report'],
+        'personal': ['personal', 'family', 'vacation', 'trip', 'home']
+      }
+      
+      Object.entries(semanticMatches).forEach(([concept, keywords]) => {
+        if (searchQuery.includes(concept)) {
+          keywords.forEach(keyword => {
+            if (file.name.toLowerCase().includes(keyword) || file.path.toLowerCase().includes(keyword)) {
+              score += 0.6
+              highlights.push(keyword)
+              contentPreview = contentPreview || `${concept} file containing ${keyword}`
+            }
+          })
         }
-        
-        // Path matching  
-        if (file.path.toLowerCase().includes(searchQuery)) {
-          score += 0.7
-          if (!highlights.includes(searchQuery)) highlights.push(searchQuery)
-          contentPreview = contentPreview || `Path: ${file.path}`
+      })
+      
+      // Date-based search
+      if (searchQuery.includes('recent') || searchQuery.includes('new') || searchQuery.includes('latest')) {
+        const fileDate = new Date(file.created_at)
+        const daysSinceCreated = (Date.now() - fileDate.getTime()) / (1000 * 60 * 60 * 24)
+        if (daysSinceCreated < 7) {
+          score += 0.5
+          contentPreview = contentPreview || `Recent file from ${fileDate.toLocaleDateString()}`
         }
-        
-        // Semantic matching for common terms
-        const semanticMatches = {
-          'photo': ['jpg', 'jpeg', 'png', 'gif', 'image', 'pic'],
-          'document': ['pdf', 'doc', 'docx', 'txt', 'text'],
-          'video': ['mp4', 'mov', 'avi', 'mkv', 'video'],
-          'audio': ['mp3', 'wav', 'flac', 'music', 'sound'],
-          'archive': ['zip', 'rar', '7z', 'tar', 'archive'],
-          'spreadsheet': ['xls', 'xlsx', 'csv', 'sheet'],
-          'presentation': ['ppt', 'pptx', 'slide'],
-          'code': ['js', 'ts', 'py', 'java', 'cpp', 'code', 'src'],
-          'tax': ['tax', 'w2', '1099', 'receipt', 'irs'],
-          'work': ['work', 'office', 'business', 'meeting', 'report'],
-          'personal': ['personal', 'family', 'vacation', 'trip', 'home']
-        }
-        
-        Object.entries(semanticMatches).forEach(([concept, keywords]) => {
-          if (searchQuery.includes(concept)) {
-            keywords.forEach(keyword => {
-              if (file.name.toLowerCase().includes(keyword) || file.path.toLowerCase().includes(keyword)) {
-                score += 0.6
-                highlights.push(keyword)
-                contentPreview = contentPreview || `${concept} file containing ${keyword}`
-              }
-            })
+      }
+      
+      if (score > 0) {
+        searchResults.push({
+          file_id: file.id,
+          filename: file.name,
+          content_preview: contentPreview || `File: ${file.name}`,
+          relevance_score: Math.min(score, 1),
+          highlights: highlights as readonly string[],
+          metadata: {
+            file_type: file.name.split('.').pop()?.toUpperCase() || 'FILE',
+            size: parseInt(file.size.replace(/[^\d]/g, '')) * 1024 * 1024 || 0,
+            created_at: file.created_at,
+            classification: 'unclassified',
+            tags: [] as readonly string[]
           }
         })
-        
-        // Date-based search
-        if (searchQuery.includes('recent') || searchQuery.includes('new') || searchQuery.includes('latest')) {
-          const fileDate = new Date(file.created_at)
-          const daysSinceCreated = (Date.now() - fileDate.getTime()) / (1000 * 60 * 60 * 24)
-          if (daysSinceCreated < 7) {
-            score += 0.5
-            contentPreview = contentPreview || `Recent file from ${fileDate.toLocaleDateString()}`
-          }
-        }
-        
-        if (score > 0) {
-          return {
-            file_id: file.id,
-            filename: file.name,
-            content_preview: contentPreview || `File: ${file.name}`,
-            relevance_score: Math.min(score, 1),
-            highlights,
-            metadata: {
-              file_type: file.name.split('.').pop()?.toUpperCase() || 'FILE',
-              size: parseInt(file.size.replace(/[^\d]/g, '')) * 1024 * 1024 || 0,
-              created_at: file.created_at,
-              classification: 'unclassified' as const,
-              tags: []
-            }
-          }
-        }
-        return null
-      })
-      .filter((result): result is SearchHit => result !== null)
+      }
+    })
+    
+    const results = searchResults
       .sort((a, b) => b.relevance_score - a.relevance_score)
       .slice(0, 10)
     
@@ -171,7 +172,7 @@ const IntegratedSearch: React.FC<IntegratedSearchProps> = ({ className = '' }) =
       results,
       total_count: results.length,
       query_time: queryTime,
-      suggestions: results.length === 0 ? ['Try "photos", "documents", or "recent files"'] : undefined
+      suggestions: results.length === 0 ? ['Try "photos", "documents", or "recent files"'] as readonly string[] : [] as readonly string[]
     }
   }, [])
 

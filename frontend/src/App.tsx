@@ -115,7 +115,7 @@ function App(): JSX.Element {
 
   return (
     <div className="min-h-screen cyber-bg-void">
-      <Header />
+      <Header onSearchClick={() => {}} />
       
       {/* Main Intelligence Interface */}
       <main className="container mx-auto px-4 py-8 max-w-7xl">

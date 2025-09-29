@@ -64,7 +64,7 @@ const SearchInterface: React.FC<SearchInterfaceProps> = ({ isOpen, onClose }) =>
         void handleSearch(newQuery)
       }, 500)
       
-      return () => clearTimeout(timeoutId)
+      clearTimeout(timeoutId)
     }
   }, [handleSearch])
 
