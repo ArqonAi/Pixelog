@@ -1,8 +1,25 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { X, CheckCircle } from 'lucide-react'
+import { CheckCircle } from 'lucide-react'
 
-const ProgressModal = ({ progress }) => {
+// ===== COMPONENT TYPES =====
+
+interface ProgressData {
+  readonly stage: string
+  readonly percentage: number
+  readonly message?: string
+  readonly status?: string
+}
+
+interface ProgressModalProps {
+  readonly progress: ProgressData
+}
+
+// ===== PROGRESS MODAL COMPONENT =====
+
+const ProgressModal: React.FC<ProgressModalProps> = ({ progress }) => {
+  const isComplete = progress.percentage >= 100
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -18,7 +35,7 @@ const ProgressModal = ({ progress }) => {
       >
         <div className="text-center">
           <div className="mb-6">
-            {progress.percentage === 100 ? (
+            {isComplete ? (
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -36,18 +53,18 @@ const ProgressModal = ({ progress }) => {
           </div>
 
           <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-            {progress.percentage === 100 ? 'Conversion Complete!' : 'Converting Files'}
+            {isComplete ? 'Conversion Complete!' : 'Converting Files'}
           </h3>
 
           <p className="text-gray-600 dark:text-gray-300 mb-6">
-            {progress.stage}: {progress.percentage}%
+            {progress.stage}: {Math.round(progress.percentage)}%
           </p>
 
           <div className="progress-bar mb-4">
             <motion.div
               className="progress-fill"
               initial={{ width: 0 }}
-              animate={{ width: `${progress.percentage}%` }}
+              animate={{ width: `${Math.min(progress.percentage, 100)}%` }}
               transition={{ duration: 0.3, ease: "easeOut" }}
             />
           </div>
@@ -62,7 +79,7 @@ const ProgressModal = ({ progress }) => {
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-600 dark:text-gray-400">Progress:</span>
               <span className="font-medium text-gray-900 dark:text-gray-100">
-                {progress.percentage}%
+                {Math.round(progress.percentage)}%
               </span>
             </div>
             <div className="flex justify-between items-center text-sm">
@@ -71,6 +88,14 @@ const ProgressModal = ({ progress }) => {
                 {progress.stage}
               </span>
             </div>
+            {progress.status && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-600 dark:text-gray-400">Status:</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  {progress.status}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>

@@ -1,8 +1,16 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Github, Heart, Star, Search } from 'lucide-react'
+import { Github, Star, Search } from 'lucide-react'
 
-const Header = ({ onSearchClick }) => {
+// ===== COMPONENT TYPES =====
+
+interface HeaderProps {
+  readonly onSearchClick: () => void
+}
+
+// ===== HEADER COMPONENT =====
+
+const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
   return (
     <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
       <div className="container mx-auto px-4 py-4">
@@ -39,6 +47,7 @@ const Header = ({ onSearchClick }) => {
               onClick={onSearchClick}
               className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               title="Semantic Search"
+              aria-label="Open search interface"
             >
               <Search className="w-5 h-5" />
             </button>
@@ -48,6 +57,7 @@ const Header = ({ onSearchClick }) => {
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              aria-label="View on GitHub"
             >
               <Github className="w-5 h-5" />
             </a>

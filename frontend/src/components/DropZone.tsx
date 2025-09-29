@@ -2,10 +2,19 @@ import React, { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Upload, File, Image, Music, Video } from 'lucide-react'
 
-const DropZone = ({ onFileDrop, isDisabled }) => {
-  const [isDragOver, setIsDragOver] = useState(false)
+// ===== COMPONENT TYPES =====
 
-  const handleDragOver = useCallback((e) => {
+interface DropZoneProps {
+  readonly onFileDrop: (files: readonly File[]) => void
+  readonly isDisabled?: boolean
+}
+
+// ===== DROPZONE COMPONENT =====
+
+const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) => {
+  const [isDragOver, setIsDragOver] = useState<boolean>(false)
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
     e.preventDefault()
     e.stopPropagation()
     if (!isDisabled) {
@@ -13,13 +22,13 @@ const DropZone = ({ onFileDrop, isDisabled }) => {
     }
   }, [isDisabled])
 
-  const handleDragLeave = useCallback((e) => {
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
   }, [])
 
-  const handleDrop = useCallback((e) => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
@@ -32,20 +41,24 @@ const DropZone = ({ onFileDrop, isDisabled }) => {
     }
   }, [onFileDrop, isDisabled])
 
-  const handleFileSelect = useCallback((e) => {
-    const files = Array.from(e.target.files)
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
+    const files = Array.from(e.target.files ?? [])
     if (files.length > 0) {
       onFileDrop(files)
     }
   }, [onFileDrop])
 
-  const getFileIcon = (file) => {
-    const type = file.type.split('/')[0]
+  const getFileIcon = (fileType: string): JSX.Element => {
+    const type = fileType.split('/')[0]
     switch (type) {
-      case 'image': return <Image className="w-6 h-6" />
-      case 'audio': return <Music className="w-6 h-6" />
-      case 'video': return <Video className="w-6 h-6" />
-      default: return <File className="w-6 h-6" />
+      case 'image': 
+        return <Image className="w-6 h-6" />
+      case 'audio': 
+        return <Music className="w-6 h-6" />
+      case 'video': 
+        return <Video className="w-6 h-6" />
+      default: 
+        return <File className="w-6 h-6" />
     }
   }
 
@@ -70,9 +83,13 @@ const DropZone = ({ onFileDrop, isDisabled }) => {
           className="hidden"
           id="file-input"
           disabled={isDisabled}
+          accept="*/*"
         />
         
-        <label htmlFor="file-input" className={`block text-center ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+        <label 
+          htmlFor="file-input" 
+          className={`block text-center ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        >
           <motion.div
             animate={isDragOver ? { scale: 1.1 } : { scale: 1 }}
             className="mb-4"
