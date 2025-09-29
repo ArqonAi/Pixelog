@@ -44,6 +44,20 @@ const CloudStorage: React.FC<CloudStorageProps> = ({ className = '' }) => {
   const loadCloudData = async (): Promise<void> => {
     try {
       setIsLoading(true)
+      // Check if cloud endpoints are available by testing the health endpoint first
+      const healthResponse = await fetch('/api/health')
+      const health = await healthResponse.json()
+      
+      if (!health.cloud_enabled) {
+        // Cloud storage is disabled on the backend
+        setCloudStatus({
+          configured: false
+        })
+        setCloudFiles([])
+        setIsLoading(false)
+        return
+      }
+      
       const [status, files] = await Promise.all([
         cloudApi.getStatus(),
         cloudApi.getCloudFiles().catch(() => []) // Don't fail if not configured
@@ -51,13 +65,18 @@ const CloudStorage: React.FC<CloudStorageProps> = ({ className = '' }) => {
       
       setCloudStatus(status)
       setCloudFiles(files)
+      setIsLoading(false)
       
       if (status.provider) {
         setSelectedProvider(status.provider)
       }
     } catch (error) {
       console.error('Failed to load cloud data:', error)
-    } finally {
+      // Handle missing cloud endpoints gracefully
+      setCloudStatus({
+        configured: false
+      })
+      setCloudFiles([])
       setIsLoading(false)
     }
   }
