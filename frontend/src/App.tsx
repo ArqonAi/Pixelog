@@ -146,12 +146,13 @@ function App(): JSX.Element {
         </motion.div>
 
         {/* Upload and Files */}
-        <div className="grid lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid lg:grid-cols-2 gap-6 mb-8 lg:items-stretch">
           {/* Upload Section */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
+            className="h-full"
           >
             <DropZone 
               onFileDrop={handleFileDrop} 
@@ -164,6 +165,7 @@ function App(): JSX.Element {
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
+            className="h-full"
           >
             <FileList 
               files={pixeFiles ?? []} 

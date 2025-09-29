@@ -74,7 +74,7 @@ const FileList: React.FC<FileListProps> = ({ files, onRefresh, onToast }) => {
   }
 
   return (
-    <div className="cyber-terminal">
+    <div className="cyber-terminal h-full flex flex-col">
       <div className="cyber-terminal-header">
         <h2 className="cyber-h2 text-lg flex-1">
           Converted Files ({files.length})
@@ -89,7 +89,7 @@ const FileList: React.FC<FileListProps> = ({ files, onRefresh, onToast }) => {
         </button>
       </div>
       
-      <div className="cyber-terminal-body">
+      <div className="cyber-terminal-body flex-1">
 
       {files.length === 0 ? (
         <div className="text-center py-12 cyber-text-secondary">

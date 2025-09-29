@@ -68,7 +68,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) =
   }
 
   return (
-    <div className="cyber-terminal">
+    <div className="cyber-terminal h-full flex flex-col">
       <div className="cyber-terminal-header">
         <h2 className="cyber-h2 text-lg flex-1">Upload Files</h2>
         <div className="cyber-mono text-xs cyber-text-secondary">
@@ -76,7 +76,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) =
         </div>
       </div>
       
-      <div className="cyber-terminal-body">
+      <div className="cyber-terminal-body flex-1 flex flex-col">
         <motion.div
           className={`
             relative rounded-lg p-8 transition-all duration-300
