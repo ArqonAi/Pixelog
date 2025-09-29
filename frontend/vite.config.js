@@ -9,6 +9,12 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true
       }
+    },
+    // Force cache clear for development
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     }
   },
   build: {

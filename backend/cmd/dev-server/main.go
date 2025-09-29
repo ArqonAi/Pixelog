@@ -106,6 +106,24 @@ func main() {
 			})
 		})
 
+		// Mock download endpoint  
+		api.GET("/files/:id", func(c *gin.Context) {
+			fileId := c.Param("id")
+			// Return mock file blob
+			c.Header("Content-Disposition", "attachment; filename="+fileId+".pixe")
+			c.Header("Content-Type", "application/octet-stream")
+			c.String(http.StatusOK, "Mock file content for "+fileId)
+		})
+
+		// Mock delete endpoint
+		api.DELETE("/files/:id", func(c *gin.Context) {
+			fileId := c.Param("id")
+			c.JSON(http.StatusOK, gin.H{
+				"message": "File deleted successfully (mock)",
+				"file_id": fileId,
+			})
+		})
+
 		// Mock search endpoints
 		search := api.Group("/search")
 		{
