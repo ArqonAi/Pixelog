@@ -34,8 +34,8 @@
     <meta name="msapplication-TileColor" content="#3b82f6" />
     <meta name="msapplication-tap-highlight" content="no" />
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- PWA Manifest (temporarily disabled for debugging) -->
+    <!-- <link rel="manifest" href="/manifest.json" /> -->
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
@@ -49,10 +49,17 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     
-    <!-- Service Worker Registration (Temporarily disabled for debugging) -->
+    <!-- Service Worker Management -->
     <script>
-      // Temporarily disabled service worker to debug port issues
-      console.log('Service Worker temporarily disabled for development');
+      // Unregister any existing service workers to prevent port confusion
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            console.log('Unregistering service worker:', registration.scope);
+            registration.unregister();
+          }
+        });
+      }
       
       // Handle app install prompt
       let deferredPrompt;
