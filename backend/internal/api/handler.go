@@ -435,26 +435,49 @@ func (h *Handler) ExtractFile(c *gin.Context) {
 
 func (h *Handler) DownloadFile(c *gin.Context) {
 	fileID := c.Param("id")
-	filePath := filepath.Join("./output", fileID+".pixe")
+	
+	// Use the converter's output directory
+	outputDir := h.converter.GetOutputDir()
+	filePath := filepath.Join(outputDir, fileID+".pixe")
 
+	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
 		return
 	}
 
+	// Set proper headers for file download
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Content-Disposition", "attachment; filename="+fileID+".pixe")
+	c.Header("Content-Type", "application/octet-stream")
+	
 	c.File(filePath)
 }
 
 func (h *Handler) DeletePixeFile(c *gin.Context) {
 	fileID := c.Param("id")
-	filePath := filepath.Join("./output", fileID+".pixe")
+	
+	// Use the converter's output directory
+	outputDir := h.converter.GetOutputDir()
+	filePath := filepath.Join(outputDir, fileID+".pixe")
 
+	// Check if file exists first
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+
+	// Delete the file
 	if err := os.Remove(filePath); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete file"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "File deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"message": "File deleted successfully",
+		"file_id": fileID,
+	})
 }
 
 func (h *Handler) SearchContent(c *gin.Context) {

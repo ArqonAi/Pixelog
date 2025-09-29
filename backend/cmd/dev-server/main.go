@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -106,21 +107,46 @@ func main() {
 			})
 		})
 
-		// Mock download endpoint  
+		// Real download endpoint - serves actual .pixe files
 		api.GET("/files/:id", func(c *gin.Context) {
-			fileId := c.Param("id")
-			// Return mock file blob
-			c.Header("Content-Disposition", "attachment; filename="+fileId+".pixe")
+			fileID := c.Param("id")
+			filePath := filepath.Join("./output", fileID+".pixe")
+
+			// Check if file exists
+			if _, err := os.Stat(filePath); os.IsNotExist(err) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+				return
+			}
+
+			// Set proper headers for file download
+			c.Header("Content-Description", "File Transfer")
+			c.Header("Content-Transfer-Encoding", "binary")
+			c.Header("Content-Disposition", "attachment; filename="+fileID+".pixe")
 			c.Header("Content-Type", "application/octet-stream")
-			c.String(http.StatusOK, "Mock file content for "+fileId)
+			
+			c.File(filePath)
 		})
 
-		// Mock delete endpoint
+		// Real delete endpoint - actually deletes .pixe files
 		api.DELETE("/files/:id", func(c *gin.Context) {
-			fileId := c.Param("id")
+			fileID := c.Param("id")
+			filePath := filepath.Join("./output", fileID+".pixe")
+
+			// Check if file exists first
+			if _, err := os.Stat(filePath); os.IsNotExist(err) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+				return
+			}
+
+			// Delete the file
+			if err := os.Remove(filePath); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete file"})
+				return
+			}
+
 			c.JSON(http.StatusOK, gin.H{
-				"message": "File deleted successfully (mock)",
-				"file_id": fileId,
+				"message": "File deleted successfully",
+				"file_id": fileID,
 			})
 		})
 
