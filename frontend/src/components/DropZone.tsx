@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Upload, File, Image, Music, Video } from 'lucide-react'
+import { Upload, File, Image, Music, Video, Lock, LockOpen, Eye, EyeOff } from 'lucide-react'
 
 // ===== COMPONENT TYPES =====
 
 interface DropZoneProps {
-  readonly onFileDrop: (files: readonly File[]) => void
+  readonly onFileDrop: (files: readonly File[], encryptionPassword?: string) => void
   readonly isDisabled?: boolean
 }
 
@@ -13,6 +13,9 @@ interface DropZoneProps {
 
 const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) => {
   const [isDragOver, setIsDragOver] = useState<boolean>(false)
+  const [encryptionEnabled, setEncryptionEnabled] = useState<boolean>(false)
+  const [encryptionPassword, setEncryptionPassword] = useState<string>('')
+  const [showPassword, setShowPassword] = useState<boolean>(false)
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
     e.preventDefault()
@@ -37,16 +40,18 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) =
 
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 0) {
-      onFileDrop(files)
+      const password = encryptionEnabled ? encryptionPassword : undefined
+      onFileDrop(files, password)
     }
-  }, [onFileDrop, isDisabled])
+  }, [onFileDrop, isDisabled, encryptionEnabled, encryptionPassword])
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
     const files = Array.from(e.target.files ?? [])
     if (files.length > 0) {
-      onFileDrop(files)
+      const password = encryptionEnabled ? encryptionPassword : undefined
+      onFileDrop(files, password)
     }
-  }, [onFileDrop])
+  }, [onFileDrop, encryptionEnabled, encryptionPassword])
 
   const getFileIcon = (fileType: string): JSX.Element => {
     const type = fileType.split('/')[0]
@@ -139,12 +144,89 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) =
                 <span className="cyber-mono text-xs cyber-text-secondary block">Video</span>
               </div>
             </div>
-            
-            <div className="cyber-mono text-xs cyber-text-tertiary">
-              All file types supported • 100MB maximum per file
-            </div>
           </label>
         </motion.div>
+        
+        {/* Encryption Options */}
+        <div className="mt-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {encryptionEnabled ? (
+                <Lock className="w-4 h-4 cyber-text-cyber" />
+              ) : (
+                <LockOpen className="w-4 h-4 cyber-text-secondary" />
+              )}
+              <span className="cyber-body cyber-text-primary">
+                Encryption
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEncryptionEnabled(!encryptionEnabled)}
+              className={`
+                relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200
+                ${encryptionEnabled 
+                  ? 'bg-green-600' 
+                  : 'bg-gray-600'
+                }
+              `}
+              disabled={isDisabled}
+            >
+              <span
+                className={`
+                  inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200
+                  ${encryptionEnabled ? 'translate-x-6' : 'translate-x-1'}
+                `}
+              />
+            </button>
+          </div>
+          
+          {encryptionEnabled && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="block cyber-body text-sm cyber-text-secondary mb-2">
+                  Encryption Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={encryptionPassword}
+                    onChange={(e) => setEncryptionPassword(e.target.value)}
+                    placeholder="Enter secure password..."
+                    className="cyber-input w-full pr-10"
+                    disabled={isDisabled}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 cyber-text-secondary hover:cyber-text-primary transition-colors"
+                    disabled={isDisabled}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-2 cyber-bg-panel p-3 rounded-lg">
+                <Lock className="w-4 h-4 cyber-text-amber mt-0.5 flex-shrink-0" />
+                <div className="text-xs cyber-text-secondary">
+                  <strong className="cyber-text-amber">Secure Encryption:</strong> Files will be encrypted using AES-256-GCM. 
+                  Store your password safely - lost passwords cannot be recovered.
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </div>
       </div>
     </div>
   )

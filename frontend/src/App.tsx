@@ -65,7 +65,7 @@ function App(): JSX.Element {
   )
 
   // File drop handler with proper error handling
-  const handleFileDrop = async (files: readonly File[]): Promise<void> => {
+  const handleFileDrop = async (files: readonly File[], encryptionPassword?: string): Promise<void> => {
     if (files.length === 0) {
       showToast('No files selected', 'warning')
       return
@@ -79,7 +79,8 @@ function App(): JSX.Element {
     })
 
     try {
-      const jobId = await pixelogApi.convertFiles(files, undefined, handleProgress)
+      const options = encryptionPassword ? { encryption: true } : undefined
+      const jobId = await pixelogApi.convertFiles(files, options, handleProgress)
 
       showToast(`Conversion started! Job ID: ${jobId}`, 'success')
       
