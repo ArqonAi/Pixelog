@@ -1,12 +1,15 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
+import { Search } from 'lucide-react'
 import Header from './components/Header'
 import DropZone from './components/DropZone'
 import ProgressModal from './components/ProgressModal'
 import FileList from './components/FileList'
 import Toast from './components/Toast'
-import SearchInterface from './components/SearchInterface'
+import IntegratedSearch from './components/IntegratedSearch'
+import CloudStorage from './components/CloudStorage'
+import Footer from './components/Footer'
 import { pixelogApi, createProgressCallback } from '@/services/api'
 import type { PixeFile, ProgressUpdate } from '@/types/api'
 
@@ -30,7 +33,6 @@ function App(): JSX.Element {
   const [isConverting, setIsConverting] = useState<boolean>(false)
   const [conversionProgress, setConversionProgress] = useState<ConversionProgressState | null>(null)
   const [toast, setToast] = useState<ToastData | null>(null)
-  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false)
 
   // Query for pixe files with proper typing
   const { data: pixeFiles, refetch: refetchFiles } = useQuery({
@@ -110,42 +112,46 @@ function App(): JSX.Element {
     setToast(null)
   }
 
-  // Search toggle handlers
-  const handleSearchOpen = (): void => {
-    setIsSearchOpen(true)
-  }
-
-  const handleSearchClose = (): void => {
-    setIsSearchOpen(false)
-  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-900">
-      <Header onSearchClick={handleSearchOpen} />
+    <div className="min-h-screen cyber-bg-void">
+      <Header />
       
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
+      {/* Main Intelligence Interface */}
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Main Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-            Pixelog
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
-            SQLite-meets-YouTube for LLM memories
+          <h1 className="cyber-h1 text-4xl md:text-5xl mb-4">Pixelog</h1>
+          <p className="cyber-body text-xl cyber-text-secondary mb-2">
+            Convert files into portable, searchable video archives
           </p>
-          <p className="text-gray-500 dark:text-gray-400">
-            Convert your knowledge into portable, encrypted .pixe files
+          <p className="cyber-body cyber-text-tertiary">
+            Encode any file as QR codes in MP4 format for secure, offline storage
           </p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
+        {/* Integrated Search */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="mb-8"
+        >
+          <IntegratedSearch />
+        </motion.div>
+
+        {/* Upload and Files */}
+        <div className="grid lg:grid-cols-2 gap-6 mb-8">
+          {/* Upload Section */}
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
           >
             <DropZone 
               onFileDrop={handleFileDrop} 
@@ -153,10 +159,11 @@ function App(): JSX.Element {
             />
           </motion.div>
 
+          {/* Local Files */}
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
           >
             <FileList 
               files={pixeFiles ?? []} 
@@ -166,48 +173,96 @@ function App(): JSX.Element {
           </motion.div>
         </div>
 
+        {/* Cloud Storage Section */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="mb-8"
+        >
+          <CloudStorage />
+        </motion.div>
+
+        {/* How it Works Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
           className="mt-16"
         >
-          <div className="card text-center">
-            <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              ✨ Features
-            </h3>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="p-4">
-                <div className="text-3xl mb-2">🔒</div>
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                  Encrypted & Compressed
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Secure QR-encoded video files
-                </p>
+          <div className="cyber-terminal">
+            <div className="cyber-terminal-header">
+              <h2 className="cyber-h2 text-xl flex-1">How Pixelog Works</h2>
+            </div>
+            <div className="cyber-terminal-body">
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Process Steps */}
+                <div>
+                  <h3 className="cyber-h3 text-lg mb-4 cyber-text-primary">Conversion Process</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center cyber-mono text-xs font-bold text-black">1</div>
+                      <div>
+                        <h4 className="cyber-body font-semibold cyber-text-primary">File Encoding</h4>
+                        <p className="cyber-body text-sm cyber-text-secondary">Your files are converted into QR code sequences, preserving all data integrity</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center cyber-mono text-xs font-bold text-black">2</div>
+                      <div>
+                        <h4 className="cyber-body font-semibold cyber-text-primary">Video Assembly</h4>
+                        <p className="cyber-body text-sm cyber-text-secondary">QR frames are compiled into standard MP4 video files for portability</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center cyber-mono text-xs font-bold text-black">3</div>
+                      <div>
+                        <h4 className="cyber-body font-semibold cyber-text-primary">Indexing</h4>
+                        <p className="cyber-body text-sm cyber-text-secondary">Content is analyzed for semantic search capabilities</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Features */}
+                <div>
+                  <h3 className="cyber-h3 text-lg mb-4 cyber-text-primary">Key Features</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
+                      <span className="cyber-body cyber-text-secondary">100% lossless encoding</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
+                      <span className="cyber-body cyber-text-secondary">Standard MP4 format</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
+                      <span className="cyber-body cyber-text-secondary">Works offline</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
+                      <span className="cyber-body cyber-text-secondary">AI-powered search</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
+                      <span className="cyber-body cyber-text-secondary">Cross-platform compatible</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
+                      <span className="cyber-body cyber-text-secondary">Supports all file types</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="p-4">
-                <div className="text-3xl mb-2">📱</div>
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                  Portable & Streamable
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Access anywhere, anytime
-                </p>
-              </div>
-              <div className="p-4">
-                <div className="text-3xl mb-2">🔍</div>
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                  Semantic Search
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  AI-powered content discovery
-                </p>
-              </div>
+
             </div>
           </div>
         </motion.div>
       </main>
+
+      {/* Footer */}
+      <Footer />
 
       {/* Progress Modal */}
       <AnimatePresence>
@@ -227,11 +282,6 @@ function App(): JSX.Element {
         )}
       </AnimatePresence>
 
-      {/* Search Interface */}
-      <SearchInterface 
-        isOpen={isSearchOpen} 
-        onClose={handleSearchClose} 
-      />
     </div>
   )
 }

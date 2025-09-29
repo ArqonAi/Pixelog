@@ -12,54 +12,43 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
   return (
-    <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
-      <div className="container mx-auto px-4 py-4">
+    <header className="cyber-bg-panel sticky top-0 z-50 backdrop-blur-md">
+      <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center space-x-3"
+            className="flex items-center space-x-4"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">P</span>
+            {/* Logo */}
+            <div className="w-10 h-10 cyber-bg-void rounded flex items-center justify-center">
+              <span className="cyber-text-cyber font-bold text-lg font-mono">Π</span>
             </div>
+            
+            {/* Brand */}
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              <h1 className="cyber-h2 text-xl cyber-text-primary font-display">
                 Pixelog
               </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                v1.0.0
-              </p>
             </div>
           </motion.div>
 
+          {/* Controls */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center space-x-4"
+            className="flex items-center"
           >
-            <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-              <Star className="w-4 h-4 text-yellow-500" />
-              <span>Star on GitHub</span>
-            </div>
-            
-            <button
-              onClick={onSearchClick}
-              className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              title="Semantic Search"
-              aria-label="Open search interface"
-            >
-              <Search className="w-5 h-5" />
-            </button>
-            
+            {/* Source */}
             <a
               href="https://github.com/ArqonAi/Pixelog"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              aria-label="View on GitHub"
+              className="px-3 py-2 text-sm flex items-center space-x-2 cyber-text-secondary hover:cyber-text-primary transition-colors"
+              aria-label="View source code"
             >
-              <Github className="w-5 h-5" />
+              <Github className="w-4 h-4" />
+              <span>Source</span>
             </a>
           </motion.div>
         </div>

@@ -74,26 +74,28 @@ const FileList: React.FC<FileListProps> = ({ files, onRefresh, onToast }) => {
   }
 
   return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-          PixeFiles ({files.length})
+    <div className="cyber-terminal">
+      <div className="cyber-terminal-header">
+        <h2 className="cyber-h2 text-lg flex-1">
+          Converted Files ({files.length})
         </h2>
         <button
           onClick={onRefresh}
-          className="btn-secondary"
+          className="cyber-btn px-3 py-1 text-sm flex items-center space-x-2"
           aria-label="Refresh file list"
         >
           <RefreshCw className="w-4 h-4" />
-          Refresh
+          <span>Refresh</span>
         </button>
       </div>
+      
+      <div className="cyber-terminal-body">
 
       {files.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          <FileVideo className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p className="text-lg mb-2">No PixeFiles yet</p>
-          <p className="text-sm">Upload some files to get started!</p>
+        <div className="text-center py-12 cyber-text-secondary">
+          <FileVideo className="w-16 h-16 mx-auto mb-4 cyber-text-tertiary" />
+          <p className="cyber-h3 text-lg mb-2">No converted files</p>
+          <p className="cyber-body text-sm">Upload files to begin conversion</p>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -103,16 +105,16 @@ const FileList: React.FC<FileListProps> = ({ files, onRefresh, onToast }) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
-              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+              className="cyber-grid-row"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
-                  <FileVideo className="w-8 h-8 text-blue-500 flex-shrink-0" />
+                  <FileVideo className="w-8 h-8 cyber-text-blue flex-shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <h3 className="cyber-h3 text-lg cyber-text-primary truncate">
                       {file.name}
                     </h3>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    <div className="flex items-center space-x-4 cyber-mono text-xs cyber-text-secondary mt-1">
                       <div className="flex items-center">
                         <HardDrive className="w-4 h-4 mr-1" />
                         {file.size}
@@ -158,6 +160,7 @@ const FileList: React.FC<FileListProps> = ({ files, onRefresh, onToast }) => {
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }

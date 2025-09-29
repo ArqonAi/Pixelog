@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import './index.css'
+import './styles/cyberpunk-system.css'
 
 // Create a client with proper TypeScript configuration
 const queryClient = new QueryClient({

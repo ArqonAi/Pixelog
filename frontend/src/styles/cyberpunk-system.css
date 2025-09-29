@@ -1,0 +1,412 @@
+/**
+ * 🔒 CLASSIFIED - INQTEL Cyberpunk Design System
+ * Intelligence-grade UI components for covert operations
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+/* ===== DESIGN TOKENS ===== */
+:root {
+  /* Intelligence Color Palette */
+  --cyber-primary: #00d4ff;      /* Cyan blue */
+  --cyber-secondary: #0080ff;    /* Electric blue */
+  --cyber-accent: #40e0d0;       /* Turquoise */
+  --cyber-warning: #ffb000;      /* Alert amber */
+  --cyber-danger: #ff0040;       /* Threat red */
+  --cyber-success: #00d4ff;      /* Cyan blue */
+  
+  /* Classification Colors */
+  --unclassified: #ffffff;
+  --confidential: #ffb000;
+  --secret: #ff0080;
+  --top-secret: #ff0040;
+  
+  /* Background Layers */
+  --void: #000000;
+  --shadow: #0a0a0a;
+  --panel: #111111;
+  --surface: #1a1a1a;
+  --elevated: #222222;
+  
+  /* Text Hierarchy */
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --text-tertiary: #808080;
+  --text-disabled: #404040;
+  
+  /* Effects */
+  --glow-primary: 0 0 10px var(--cyber-primary);
+  --glow-secondary: 0 0 8px var(--cyber-secondary);
+  --glow-danger: 0 0 8px var(--cyber-danger);
+  --scan-gradient: linear-gradient(90deg, transparent, var(--cyber-primary), transparent);
+  
+  /* Typography */
+  --font-display: 'Orbitron', monospace;      /* Headers, logos */
+  --font-mono: 'Fira Code', monospace;        /* Code, data */
+  --font-ui: 'Rajdhani', sans-serif;          /* Interface text */
+  
+  /* Spacing Scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  
+  /* Border Radius */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  
+  /* Timing Functions */
+  --ease-cyber: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-glitch: cubic-bezier(0.55, 0.085, 0.68, 0.53);
+}
+
+/* ===== GLOBAL FOUNDATION ===== */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--void);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  overflow-x: hidden;
+}
+
+body {
+  background-image: 
+    /* Matrix rain effect */
+    radial-gradient(circle at 20% 80%, rgba(0, 255, 65, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(255, 0, 128, 0.05) 0%, transparent 50%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* ===== COMPONENT SYSTEM ===== */
+
+/* Terminal Window */
+.cyber-terminal {
+  background: var(--panel);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  position: relative;
+  overflow: hidden;
+}
+
+.cyber-terminal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--scan-gradient);
+  animation: scanline 3s linear infinite;
+  z-index: 1;
+}
+
+.cyber-terminal-header {
+  background: linear-gradient(90deg, var(--panel), var(--elevated));
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cyber-terminal-body {
+  padding: var(--space-4);
+  position: relative;
+  z-index: 2;
+}
+
+/* Classification Badges */
+.classification-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 1px solid currentColor;
+}
+
+.classification-unclassified {
+  color: var(--unclassified);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.classification-confidential {
+  color: var(--confidential);
+  background: rgba(255, 176, 0, 0.1);
+  animation: pulse-glow-amber 2s ease-in-out infinite;
+}
+
+.classification-secret {
+  color: var(--secret);
+  background: rgba(255, 0, 128, 0.1);
+  animation: pulse-glow-pink 2s ease-in-out infinite;
+}
+
+.classification-top-secret {
+  color: var(--top-secret);
+  background: rgba(255, 0, 64, 0.1);
+  animation: pulse-glow-red 2s ease-in-out infinite;
+}
+
+/* Cyber Buttons */
+.cyber-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  background: transparent;
+  border: none;
+  color: var(--cyber-primary);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-cyber);
+  overflow: hidden;
+}
+
+.cyber-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.2), transparent);
+  transition: left 0.5s var(--ease-cyber);
+}
+
+.cyber-btn:hover {
+  box-shadow: var(--glow-primary);
+  transform: translateY(-1px);
+}
+
+.cyber-btn:hover::before {
+  left: 100%;
+}
+
+.cyber-btn:active {
+  transform: translateY(0);
+}
+
+.cyber-btn-secondary {
+  border-color: var(--cyber-secondary);
+  color: var(--cyber-secondary);
+}
+
+.cyber-btn-secondary:hover {
+  box-shadow: var(--glow-secondary);
+}
+
+.cyber-btn-danger {
+  border-color: var(--cyber-danger);
+  color: var(--cyber-danger);
+}
+
+.cyber-btn-danger:hover {
+  box-shadow: var(--glow-danger);
+}
+
+/* Data Grid */
+.cyber-grid {
+  background: var(--panel);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.cyber-grid-header {
+  background: linear-gradient(90deg, var(--elevated), var(--surface));
+  padding: var(--space-4);
+  border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--cyber-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.cyber-grid-row {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background 0.2s var(--ease-cyber);
+}
+
+.cyber-grid-row:hover {
+  background: rgba(0, 255, 65, 0.05);
+  border-color: rgba(0, 255, 65, 0.3);
+}
+
+/* Progress Indicators */
+.cyber-progress {
+  position: relative;
+  height: 8px;
+  background: var(--shadow);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.cyber-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyber-primary), var(--cyber-secondary));
+  transition: width 0.3s var(--ease-cyber);
+  position: relative;
+}
+
+.cyber-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
+  animation: progress-shimmer 2s ease-in-out infinite;
+}
+
+/* Input Fields */
+.cyber-input {
+  background: var(--panel);
+  border: 2px solid rgba(0, 255, 65, 0.3);
+  color: var(--text-primary);
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-mono);
+  border-radius: var(--radius-md);
+  transition: all 0.3s var(--ease-cyber);
+}
+
+.cyber-input:focus {
+  outline: none;
+  border-color: var(--cyber-primary);
+  box-shadow: var(--glow-primary);
+}
+
+.cyber-input::placeholder {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* Typography Scale */
+.cyber-h1 {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--cyber-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cyber-h2 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.cyber-h3 {
+  font-family: var(--font-ui);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+.cyber-body {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.cyber-mono {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--cyber-primary);
+}
+
+/* ===== ANIMATIONS ===== */
+
+@keyframes scanline {
+  0% { transform: translateX(-100vw); }
+  100% { transform: translateX(100vw); }
+}
+
+@keyframes pulse-glow-amber {
+  0%, 100% { box-shadow: 0 0 5px var(--confidential); }
+  50% { box-shadow: 0 0 20px var(--confidential), 0 0 30px var(--confidential); }
+}
+
+@keyframes pulse-glow-pink {
+  0%, 100% { box-shadow: 0 0 5px var(--secret); }
+  50% { box-shadow: 0 0 20px var(--secret), 0 0 30px var(--secret); }
+}
+
+@keyframes pulse-glow-red {
+  0%, 100% { box-shadow: 0 0 5px var(--top-secret); }
+  50% { box-shadow: 0 0 20px var(--top-secret), 0 0 30px var(--top-secret); }
+}
+
+@keyframes progress-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes glitch {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+}
+
+@keyframes matrix-rain {
+  0% { opacity: 1; transform: translateY(-100%); }
+  100% { opacity: 0; transform: translateY(100vh); }
+}
+
+/* ===== UTILITY CLASSES ===== */
+
+.cyber-glow { box-shadow: var(--glow-primary); }
+.cyber-glow-blue { box-shadow: var(--glow-secondary); }
+.cyber-glow-red { box-shadow: var(--glow-danger); }
+
+.cyber-glitch { animation: glitch 0.3s ease-in-out; }
+.cyber-pulse { animation: pulse-glow-amber 2s ease-in-out infinite; }
+
+.cyber-bg-void { background: var(--void); }
+.cyber-bg-panel { background: var(--panel); }
+.cyber-bg-surface { background: var(--surface); }
+
+.cyber-text-primary { color: var(--text-primary); }
+.cyber-text-secondary { color: var(--text-secondary); }
+.cyber-text-cyber { color: var(--cyber-primary); }
+.cyber-text-blue { color: var(--cyber-secondary); }
+.cyber-text-danger { color: var(--cyber-danger); }
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .cyber-h1 { font-size: 2rem; }
+  .cyber-h2 { font-size: 1.5rem; }
+  .cyber-btn { padding: var(--space-2) var(--space-4); }
+}

@@ -63,83 +63,88 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) =
   }
 
   return (
-    <div className="card">
-      <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
-        Create PixeFile
-      </h2>
+    <div className="cyber-terminal">
+      <div className="cyber-terminal-header">
+        <h2 className="cyber-h2 text-lg flex-1">Upload Files</h2>
+        <div className="cyber-mono text-xs cyber-text-secondary">
+          Max 100MB per file
+        </div>
+      </div>
       
-      <motion.div
-        className={`drag-zone ${isDragOver ? 'drag-over' : ''} ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        whileHover={!isDisabled ? { scale: 1.02 } : {}}
-        whileTap={!isDisabled ? { scale: 0.98 } : {}}
-      >
-        <input
-          type="file"
-          multiple
-          onChange={handleFileSelect}
-          className="hidden"
-          id="file-input"
-          disabled={isDisabled}
-          accept="*/*"
-        />
-        
-        <label 
-          htmlFor="file-input" 
-          className={`block text-center ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      <div className="cyber-terminal-body">
+        <motion.div
+          className={`
+            relative rounded-lg p-8 transition-all duration-300
+            ${isDragOver 
+              ? 'bg-cyan-400/10' 
+              : 'bg-gray-900/20'
+            }
+            ${isDisabled 
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'cursor-pointer hover:bg-cyan-400/5'
+            }
+          `}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          whileHover={!isDisabled ? { scale: 1.01 } : {}}
+          whileTap={!isDisabled ? { scale: 0.99 } : {}}
         >
-          <motion.div
-            animate={isDragOver ? { scale: 1.1 } : { scale: 1 }}
-            className="mb-4"
+          <input
+            type="file"
+            multiple
+            onChange={handleFileSelect}
+            className="hidden"
+            id="file-input"
+            disabled={isDisabled}
+            accept="*/*"
+          />
+          
+          <label 
+            htmlFor="file-input" 
+            className={`block text-center ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           >
-            <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          </motion.div>
-          
-          <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">
-            {isDragOver ? 'Drop files here!' : 'Drag & drop files'}
-          </h3>
-          
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
-            or click to select files
-          </p>
-          
-          <div className="flex justify-center space-x-4 mb-4">
-            <div className="flex items-center text-gray-400">
-              <File className="w-5 h-5 mr-1" />
-              <span className="text-sm">Text</span>
+            <motion.div
+              animate={isDragOver ? { scale: 1.1 } : { scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="mb-6"
+            >
+              <Upload className="w-16 h-16 cyber-text-cyber mx-auto mb-4" />
+            </motion.div>
+            
+            <h3 className="cyber-h3 text-xl cyber-text-primary mb-3">
+              {isDragOver ? 'Drop files here' : 'Upload your files'}
+            </h3>
+            
+            <p className="cyber-body cyber-text-secondary mb-6">
+              Drag and drop files or click to browse
+            </p>
+            
+            {/* File Type Support */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              <div className="cyber-bg-panel p-3 rounded text-center">
+                <File className="w-5 h-5 cyber-text-cyber mx-auto mb-1" />
+                <span className="cyber-mono text-xs cyber-text-secondary block">Documents</span>
+              </div>
+              <div className="cyber-bg-panel p-3 rounded text-center">
+                <Image className="w-5 h-5 cyber-text-cyber mx-auto mb-1" />
+                <span className="cyber-mono text-xs cyber-text-secondary block">Images</span>
+              </div>
+              <div className="cyber-bg-panel p-3 rounded text-center">
+                <Music className="w-5 h-5 cyber-text-cyber mx-auto mb-1" />
+                <span className="cyber-mono text-xs cyber-text-secondary block">Audio</span>
+              </div>
+              <div className="cyber-bg-panel p-3 rounded text-center">
+                <Video className="w-5 h-5 cyber-text-cyber mx-auto mb-1" />
+                <span className="cyber-mono text-xs cyber-text-secondary block">Video</span>
+              </div>
             </div>
-            <div className="flex items-center text-gray-400">
-              <Image className="w-5 h-5 mr-1" />
-              <span className="text-sm">Images</span>
+            
+            <div className="cyber-mono text-xs cyber-text-tertiary">
+              All file types supported • 100MB maximum per file
             </div>
-            <div className="flex items-center text-gray-400">
-              <Music className="w-5 h-5 mr-1" />
-              <span className="text-sm">Audio</span>
-            </div>
-            <div className="flex items-center text-gray-400">
-              <Video className="w-5 h-5 mr-1" />
-              <span className="text-sm">Video</span>
-            </div>
-          </div>
-          
-          <div className="text-xs text-gray-400">
-            Maximum file size: 100MB per file
-          </div>
-        </label>
-      </motion.div>
-
-      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
-          💡 How it works:
-        </h4>
-        <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-          <li>• Files are converted to QR code sequences</li>
-          <li>• Assembled into low-framerate MP4 videos</li>
-          <li>• Compressed, encrypted, and portable</li>
-          <li>• Fully searchable and streamable</li>
-        </ul>
+          </label>
+        </motion.div>
       </div>
     </div>
   )

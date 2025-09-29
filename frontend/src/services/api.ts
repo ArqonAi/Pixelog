@@ -427,7 +427,89 @@ export class PixelogAPI {
 
 // ===== SINGLETON INSTANCE =====
 
-export const pixelogApi = new PixelogAPI();
+export const pixelogApi = new PixelogAPI()
+
+// ===== CLOUD STORAGE API =====
+
+export interface CloudProvider {
+  readonly provider: 'aws' | 'gcp' | 'azure' | 'digitalocean'
+  readonly accessKey?: string
+  readonly secretKey?: string
+  readonly serviceAccountJSON?: string
+  readonly region?: string
+  readonly bucketName: string
+}
+
+export interface CloudFile {
+  readonly id: string
+  readonly filename: string
+  readonly size: number
+  readonly cloudUrl: string
+  readonly provider: string
+  readonly uploadedAt: string
+  readonly downloadUrl?: string
+}
+
+export interface CloudStatus {
+  readonly configured: boolean
+  readonly provider?: string
+  readonly bucketName?: string
+  readonly lastSync?: string
+}
+
+class CloudStorageAPI {
+  private readonly http = new HTTPClient()
+
+  async getStatus(): Promise<CloudStatus> {
+    return this.http.get<CloudStatus>('/cloud/status')
+  }
+
+  async configureProvider(config: CloudProvider): Promise<{ success: boolean; message?: string }> {
+    return this.http.post<{ success: boolean; message?: string }>('/cloud/configure', config)
+  }
+
+  async testConnection(config: CloudProvider): Promise<{ success: boolean; message?: string }> {
+    return this.http.post<{ success: boolean; message?: string }>('/cloud/test', config)
+  }
+
+  async uploadFiles(files: readonly File[]): Promise<readonly CloudFile[]> {
+    const formData = new FormData()
+    files.forEach(file => formData.append('files', file))
+    
+    const response = await fetch(`${API_BASE_URL}/cloud/upload`, {
+      method: 'POST',
+      body: formData
+    })
+    
+    if (!response.ok) {
+      throw new PixelogAPIError(`Upload failed: ${response.statusText}`)
+    }
+    
+    return response.json()
+  }
+
+  async getCloudFiles(): Promise<readonly CloudFile[]> {
+    return this.http.get<readonly CloudFile[]>('/cloud/files')
+  }
+
+  async deleteCloudFile(fileId: string): Promise<void> {
+    await this.http.delete(`/cloud/files/${fileId}`)
+  }
+
+  async getDownloadUrl(fileId: string): Promise<{ downloadUrl: string; expiresAt: string }> {
+    return this.http.get<{ downloadUrl: string; expiresAt: string }>(`/cloud/download/${fileId}`)
+  }
+
+  async getSyncSettings(): Promise<{ autoUpload: boolean; syncOnCreate: boolean }> {
+    return this.http.get<{ autoUpload: boolean; syncOnCreate: boolean }>('/cloud/sync-settings')
+  }
+
+  async updateSyncSettings(settings: { autoUpload: boolean; syncOnCreate: boolean }): Promise<void> {
+    await this.http.put('/cloud/sync-settings', settings)
+  }
+}
+
+export const cloudApi = new CloudStorageAPI();
 
 // Cleanup on page unload
 if (typeof window !== 'undefined') {
