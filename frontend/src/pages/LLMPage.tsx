@@ -27,10 +27,25 @@ const LLMPage: React.FC = () => {
   const [decryptionKey, setDecryptionKey] = useState<string>('')
   const [showKey, setShowKey] = useState<boolean>(false)
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
-  const [processedMemories, setProcessedMemories] = useState<ProcessedMemory[]>([])
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [processedMemories, setProcessedMemories] = useState<ProcessedMemory[]>(() => {
+    const saved = localStorage.getItem('pixelog-llm-memories')
+    return saved ? JSON.parse(saved) : []
+  })
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
+    const saved = localStorage.getItem('pixelog-llm-chat')
+    return saved ? JSON.parse(saved) : []
+  })
   const [chatInput, setChatInput] = useState<string>('')
   const [isThinking, setIsThinking] = useState<boolean>(false)
+
+  // Persist memories and chat to localStorage
+  React.useEffect(() => {
+    localStorage.setItem('pixelog-llm-memories', JSON.stringify(processedMemories))
+  }, [processedMemories])
+
+  React.useEffect(() => {
+    localStorage.setItem('pixelog-llm-chat', JSON.stringify(chatMessages))
+  }, [chatMessages])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || [])
@@ -270,7 +285,7 @@ const LLMPage: React.FC = () => {
 
         {/* Chat Tab */}
         {activeTab === 'chat' && (
-          <div className="cyber-terminal h-96 flex flex-col">
+          <div className="cyber-terminal h-[600px] flex flex-col">
             <div className="cyber-terminal-header">
               <h2 className="cyber-h2 text-lg">Chat with Your Memories</h2>
               <div className="cyber-mono text-xs cyber-text-secondary">
@@ -278,8 +293,8 @@ const LLMPage: React.FC = () => {
               </div>
             </div>
             
-            <div className="cyber-terminal-body flex-1 flex flex-col">
-              <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+            <div className="cyber-terminal-body flex-1 flex flex-col min-h-0">
+              <div className="flex-1 overflow-y-auto p-4 space-y-6 min-h-0">
                 {chatMessages.length === 0 ? (
                   <div className="text-center py-12 cyber-text-secondary">
                     <MessageSquare className="w-16 h-16 mx-auto mb-4 cyber-text-tertiary" />
@@ -292,12 +307,12 @@ const LLMPage: React.FC = () => {
                   </div>
                 ) : (
                   chatMessages.map((message) => (
-                    <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} mb-6`}>
                       <div className={`
-                        max-w-[80%] p-4 rounded-lg
+                        max-w-[85%] min-w-[200px] rounded-xl p-5 shadow-lg
                         ${message.type === 'user' 
-                          ? 'cyber-bg-void cyber-text-primary' 
-                          : 'cyber-bg-panel cyber-text-primary'
+                          ? 'bg-gradient-to-br from-cyan-600/20 to-cyan-500/30 border border-cyan-500/30 cyber-text-primary' 
+                          : 'cyber-bg-panel border border-gray-600/40 cyber-text-primary'
                         }
                       `}>
                         <p className="cyber-body">{message.content}</p>
@@ -331,23 +346,39 @@ const LLMPage: React.FC = () => {
                 )}
               </div>
               
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder={processedMemories.length > 0 ? "Ask about your memories..." : "Upload memories first to chat"}
-                  className="cyber-input flex-1"
-                  disabled={processedMemories.length === 0}
-                />
-                <button
-                  onClick={sendMessage}
-                  disabled={!chatInput.trim() || processedMemories.length === 0}
-                  className="cyber-btn-secondary px-4 flex items-center gap-2"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
+              {/* Message Input */}
+              <div className="border-t border-gray-700/50 p-4 bg-gray-900/20">
+                <div className="flex gap-3">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                      placeholder={processedMemories.length > 0 ? "Ask about your memories..." : "Upload memories first to chat"}
+                      className="cyber-input w-full pr-12 py-3 text-base"
+                      disabled={processedMemories.length === 0}
+                    />
+                    <button
+                      onClick={sendMessage}
+                      disabled={!chatInput.trim() || processedMemories.length === 0 || isThinking}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 cyber-btn-secondary p-2 rounded-lg flex items-center justify-center disabled:opacity-50"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Chat Status */}
+                <div className="flex items-center justify-between mt-2 cyber-mono text-xs cyber-text-tertiary">
+                  <span>
+                    {processedMemories.length > 0 
+                      ? `${processedMemories.length} memories • ${processedMemories.reduce((sum, m) => sum + m.chunks, 0).toLocaleString()} chunks ready`
+                      : "Upload .pixe files to start chatting"
+                    }
+                  </span>
+                  <span>Press Enter to send</span>
+                </div>
               </div>
             </div>
           </div>
