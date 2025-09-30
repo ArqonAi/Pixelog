@@ -1,8 +1,114 @@
 import React, { useState } from 'react'
-import { Brain, ArrowLeft, Upload, MessageSquare, Settings } from 'lucide-react'
+import { Brain, ArrowLeft, Upload, MessageSquare, Settings, Key, Eye, EyeOff, Send, FileText } from 'lucide-react'
+
+interface ProcessedMemory {
+  id: string
+  filename: string
+  chunks: number
+  size: number
+  status: string
+  encrypted: boolean
+}
+
+interface ChatMessage {
+  id: string
+  type: 'user' | 'assistant'
+  content: string
+  sources?: Array<{
+    filename: string
+    frame_number: number
+    relevance: number
+  }>
+}
 
 const LLMPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'upload' | 'chat' | 'api'>('upload')
+  const [files, setFiles] = useState<File[]>([])
+  const [decryptionKey, setDecryptionKey] = useState<string>('')
+  const [showKey, setShowKey] = useState<boolean>(false)
+  const [isProcessing, setIsProcessing] = useState<boolean>(false)
+  const [processedMemories, setProcessedMemories] = useState<ProcessedMemory[]>([])
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState<string>('')
+  const [isThinking, setIsThinking] = useState<boolean>(false)
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || [])
+    setFiles(selectedFiles)
+  }
+
+  const processFiles = async () => {
+    if (files.length === 0) return
+    
+    setIsProcessing(true)
+    
+    try {
+      const formData = new FormData()
+      files.forEach(file => {
+        formData.append('files', file)
+      })
+      if (decryptionKey) {
+        formData.append('decryption_key', decryptionKey)
+      }
+
+      const response = await fetch('http://localhost:8080/api/llm/memories', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+      setProcessedMemories(result.memories || [])
+      setFiles([])
+      setActiveTab('chat')
+    } catch (error) {
+      console.error('Error processing files:', error)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const sendMessage = async () => {
+    if (!chatInput.trim() || processedMemories.length === 0) return
+
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      type: 'user',
+      content: chatInput
+    }
+
+    setChatMessages(prev => [...prev, userMessage])
+    const currentInput = chatInput
+    setChatInput('')
+    setIsThinking(true)
+
+    try {
+      const response = await fetch('http://localhost:8080/api/llm/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: currentInput,
+          memory_ids: processedMemories.map(m => m.id),
+          provider: 'openai',
+          model: 'gpt-4'
+        })
+      })
+
+      const result = await response.json()
+      
+      const assistantMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        type: 'assistant',
+        content: result.content,
+        sources: result.sources
+      }
+
+      setChatMessages(prev => [...prev, assistantMessage])
+    } catch (error) {
+      console.error('Error sending message:', error)
+    } finally {
+      setIsThinking(false)
+    }
+  }
   return (
     <div className="min-h-screen cyber-bg-void">
       <div className="cyber-bg-panel border-b border-gray-800/50">
@@ -45,28 +151,204 @@ const LLMPage: React.FC = () => {
 
         {/* Upload Tab */}
         {activeTab === 'upload' && (
-          <div className="cyber-terminal">
-            <div className="cyber-terminal-header">
-              <h2 className="cyber-h2 text-lg">Process .pixe Memories</h2>
-            </div>
-            <div className="cyber-terminal-body space-y-4">
-              <p className="cyber-body cyber-text-secondary">
-                Upload .pixe files to create searchable AI memories (memvid-style approach)
-              </p>
+          <div className="space-y-6">
+            <div className="grid lg:grid-cols-2 gap-6">
+              <div className="cyber-terminal">
+                <div className="cyber-terminal-header">
+                  <h2 className="cyber-h2 text-lg">Process .pixe Memories</h2>
+                </div>
+                <div className="cyber-terminal-body space-y-6">
+                  <div>
+                    <label className="block cyber-body cyber-text-primary mb-3">
+                      <Upload className="w-4 h-4 inline mr-2" />
+                      Select .pixe Memory Files
+                    </label>
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pixe,.mp4"
+                      onChange={handleFileUpload}
+                      className="cyber-input w-full"
+                    />
+                    {files.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {files.map((file, index) => (
+                          <div key={index} className="cyber-bg-panel p-3 rounded flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <FileText className="w-4 h-4 cyber-text-blue" />
+                              <span className="cyber-mono text-sm">{file.name}</span>
+                            </div>
+                            <span className="cyber-mono text-xs cyber-text-secondary">
+                              {(file.size / (1024 * 1024)).toFixed(1)}MB
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block cyber-body cyber-text-primary mb-3">
+                      <Key className="w-4 h-4 inline mr-2" />
+                      Decryption Key (if encrypted)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showKey ? 'text' : 'password'}
+                        value={decryptionKey}
+                        onChange={(e) => setDecryptionKey(e.target.value)}
+                        placeholder="Enter decryption password..."
+                        className="cyber-input w-full pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowKey(!showKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 cyber-text-secondary hover:cyber-text-primary transition-colors"
+                      >
+                        {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={processFiles}
+                    disabled={files.length === 0 || isProcessing}
+                    className="cyber-btn w-full flex items-center justify-center gap-2"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                        Processing memories...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="w-4 h-4" />
+                        Create LLM Memory ({files.length} files)
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="cyber-terminal">
+                <div className="cyber-terminal-header">
+                  <h2 className="cyber-h2 text-lg">Processed Memories</h2>
+                </div>
+                <div className="cyber-terminal-body">
+                  {processedMemories.length === 0 ? (
+                    <div className="text-center py-8 cyber-text-secondary">
+                      <Brain className="w-12 h-12 mx-auto mb-3 cyber-text-tertiary" />
+                      <p className="cyber-h3">No memories processed</p>
+                      <p className="cyber-body text-sm">Upload .pixe files to create LLM memories</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {processedMemories.map((memory) => (
+                        <div key={memory.id} className="cyber-bg-panel p-4 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="cyber-body cyber-text-primary font-medium">{memory.filename}</h3>
+                            {memory.encrypted && (
+                              <span className="cyber-mono text-xs bg-yellow-900/30 text-yellow-400 px-2 py-1 rounded">
+                                ENCRYPTED
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 cyber-mono text-xs cyber-text-secondary">
+                            <span>{memory.chunks.toLocaleString()} chunks</span>
+                            <span>{(memory.size / (1024 * 1024)).toFixed(1)}MB</span>
+                            <span className="text-green-400">{memory.status}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {/* Chat Tab */}
         {activeTab === 'chat' && (
-          <div className="cyber-terminal">
+          <div className="cyber-terminal h-96 flex flex-col">
             <div className="cyber-terminal-header">
-              <h2 className="cyber-h2 text-lg">Chat Interface</h2>
+              <h2 className="cyber-h2 text-lg">Chat with Your Memories</h2>
+              <div className="cyber-mono text-xs cyber-text-secondary">
+                {processedMemories.length} memories loaded
+              </div>
             </div>
-            <div className="cyber-terminal-body">
-              <p className="cyber-body cyber-text-secondary">
-                Frame-level semantic search and chat functionality
-              </p>
+            
+            <div className="cyber-terminal-body flex-1 flex flex-col">
+              <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+                {chatMessages.length === 0 ? (
+                  <div className="text-center py-12 cyber-text-secondary">
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 cyber-text-tertiary" />
+                    <p className="cyber-h3 text-lg mb-2">Start a conversation</p>
+                    <p className="cyber-body text-sm">
+                      {processedMemories.length > 0 
+                        ? "Ask questions about your uploaded memories" 
+                        : "Upload memories first to start chatting"}
+                    </p>
+                  </div>
+                ) : (
+                  chatMessages.map((message) => (
+                    <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`
+                        max-w-[80%] p-4 rounded-lg
+                        ${message.type === 'user' 
+                          ? 'cyber-bg-void cyber-text-primary' 
+                          : 'cyber-bg-panel cyber-text-primary'
+                        }
+                      `}>
+                        <p className="cyber-body">{message.content}</p>
+                        {message.sources && (
+                          <div className="mt-3 pt-3 border-t border-gray-700/50">
+                            <p className="cyber-mono text-xs cyber-text-secondary mb-2">Sources:</p>
+                            {message.sources.map((source, idx) => (
+                              <div key={idx} className="flex items-center justify-between cyber-mono text-xs mb-1">
+                                <span className="cyber-text-primary">{source.filename}</span>
+                                <span className="cyber-text-secondary">
+                                  Frame {source.frame_number} • {(source.relevance * 100).toFixed(0)}% match
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                
+                {isThinking && (
+                  <div className="flex justify-start">
+                    <div className="cyber-bg-panel p-4 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="cyber-body cyber-text-secondary">Analyzing memories...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  placeholder={processedMemories.length > 0 ? "Ask about your memories..." : "Upload memories first to chat"}
+                  className="cyber-input flex-1"
+                  disabled={processedMemories.length === 0}
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!chatInput.trim() || processedMemories.length === 0}
+                  className="cyber-btn-secondary px-4 flex items-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}

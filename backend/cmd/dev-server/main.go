@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -151,18 +152,106 @@ func main() {
 		})
 
 		// Mock search endpoints
-		search := api.Group("/search")
+		api.POST("/search/query", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"results": []gin.H{},
+				"message": "Search disabled in development mode",
+			})
+		})
+
+		api.GET("/search/documents", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"documents": []gin.H{},
+				"message":   "Search disabled in development mode",
+			})
+		})
+
+		// LLM Integration endpoints
+		llm := api.Group("/llm")
 		{
-			search.POST("/query", func(c *gin.Context) {
-				c.JSON(http.StatusServiceUnavailable, gin.H{
-					"error": "Search not available in development mode",
+			// Process .pixe files for LLM consumption
+			llm.POST("/memories", func(c *gin.Context) {
+				// Mock processing multiple .pixe files
+				form, _ := c.MultipartForm()
+				files := form.File["files"]
+				
+				memories := make([]gin.H, 0)
+				for i, file := range files {
+					memories = append(memories, gin.H{
+						"id":        fmt.Sprintf("mem_%d", i),
+						"filename":  file.Filename,
+						"chunks":    1000 + (i * 500), // Mock chunk count
+						"size":      file.Size,
+						"status":    "ready",
+						"encrypted": c.PostForm("decryption_key") != "",
+					})
+				}
+
+				c.JSON(http.StatusOK, gin.H{
+					"memories": memories,
+					"message":  "Mock processing completed - development mode",
 				})
 			})
 
-			search.GET("/documents", func(c *gin.Context) {
+			// Chat with processed memories  
+			llm.POST("/chat", func(c *gin.Context) {
+				var req struct {
+					Query     string   `json:"query"`
+					MemoryIDs []string `json:"memory_ids"`
+					Provider  string   `json:"provider"`
+					Model     string   `json:"model"`
+				}
+				
+				if err := c.ShouldBindJSON(&req); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+					return
+				}
+
+				// Mock AI response with frame references
+				response := gin.H{
+					"content": fmt.Sprintf("Based on your .pixe memories, I found relevant information about '%s'. This content was located through frame-level analysis of QR-encoded text chunks.", req.Query),
+					"sources": []gin.H{
+						{"filename": "document.pdf", "frame_number": 42, "relevance": 0.94},
+						{"filename": "notes.txt", "frame_number": 15, "relevance": 0.87},
+					},
+					"model":       req.Model,
+					"provider":    req.Provider,
+					"memory_ids":  req.MemoryIDs,
+					"mode":        "development",
+				}
+
+				c.JSON(http.StatusOK, response)
+			})
+
+			// Search through processed memories
+			llm.GET("/search", func(c *gin.Context) {
+				query := c.Query("q")
+				limit := c.DefaultQuery("limit", "10")
+				memoryID := c.Query("memory_id")
+
+				results := []gin.H{
+					{
+						"content":      fmt.Sprintf("Mock search result for '%s'", query),
+						"filename":     "document.pdf", 
+						"frame_number": 23,
+						"relevance":    0.92,
+						"chunk_id":     "chunk_123",
+					},
+					{
+						"content":      "Another relevant text chunk found",
+						"filename":     "notes.txt",
+						"frame_number": 8, 
+						"relevance":    0.78,
+						"chunk_id":     "chunk_456",
+					},
+				}
+
 				c.JSON(http.StatusOK, gin.H{
-					"documents": []gin.H{},
-					"message":   "No documents in development mode",
+					"query":     query,
+					"results":   results,
+					"limit":     limit,
+					"memory_id": memoryID,
+					"total":     len(results),
 				})
 			})
 		}
