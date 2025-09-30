@@ -72,7 +72,7 @@ const CloudStorage: React.FC<CloudStorageProps> = ({ className = '' }) => {
       }
     } catch (error) {
       console.error('Failed to load cloud data:', error)
-      // Handle missing cloud endpoints gracefully
+      // Set default development values
       setCloudStatus({
         configured: false
       })

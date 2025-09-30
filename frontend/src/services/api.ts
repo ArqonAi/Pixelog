@@ -203,6 +203,37 @@ class WebSocketClient {
   private connections = new Map<string, WebSocket>();
 
   trackProgress(jobId: string, onProgress: ProgressCallback): () => void {
+    // Check if we're in development mode by checking if the backend is mock
+    const isDevelopment = jobId.startsWith('dev_job_');
+    
+    if (isDevelopment) {
+      // Simulate progress updates for development
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 20;
+        
+        if (progress >= 100) {
+          onProgress({
+            status: 'completed',
+            progress: 100,
+            message: 'Mock conversion completed',
+            job_id: jobId
+          });
+          clearInterval(interval);
+        } else {
+          onProgress({
+            status: 'processing',
+            progress,
+            message: `Mock processing: ${progress}%`,
+            job_id: jobId
+          });
+        }
+      }, 500); // Update every 500ms
+      
+      return () => clearInterval(interval);
+    }
+    
+    // Production WebSocket connection
     const wsUrl = `ws://${window.location.host}/api/ws/status/${jobId}`;
     const ws = new WebSocket(wsUrl);
     
