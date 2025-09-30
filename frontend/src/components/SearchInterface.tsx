@@ -131,14 +131,14 @@ const SearchInterface: React.FC<SearchInterfaceProps> = ({ isOpen, onClose }) =>
                     value={searchState.query}
                     onChange={handleQueryChange}
                     placeholder="Search through your PixeFiles content..."
-                    className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-colors"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-colors"
                     autoFocus
                   />
                 </form>
 
                 {searchState.isLoading && (
-                  <div className="mt-4 flex items-center text-blue-600 dark:text-blue-400">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2" />
+                  <div className="mt-4 flex items-center text-green-600 dark:text-green-400">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2" />
                     Searching...
                   </div>
                 )}
@@ -185,7 +185,7 @@ const SearchInterface: React.FC<SearchInterfaceProps> = ({ isOpen, onClose }) =>
                                 {hit.filename}
                               </h3>
                               <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                                <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
+                                <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-2 py-1 rounded-full">
                                   {Math.round(hit.relevance_score * 100)}% match
                                 </span>
                               </div>

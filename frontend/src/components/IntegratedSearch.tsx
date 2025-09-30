@@ -224,7 +224,7 @@ const IntegratedSearch: React.FC<IntegratedSearchProps> = ({ className = '' }) =
     let result = text
     highlights.forEach(highlight => {
       const regex = new RegExp(`(${highlight})`, 'gi')
-      result = result.replace(regex, '<mark class="bg-cyan-400/30 text-cyan-100 rounded px-1">$1</mark>')
+      result = result.replace(regex, '<mark class="bg-green-400/30 text-green-100 rounded px-1">$1</mark>')
     })
     
     return <span dangerouslySetInnerHTML={{ __html: result }} />

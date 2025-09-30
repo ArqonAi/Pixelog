@@ -130,7 +130,7 @@ const FileList: React.FC<FileListProps> = ({ files, onRefresh, onToast }) => {
                 <div className="flex items-center space-x-2 ml-4">
                   <button
                     onClick={() => void handleExtract(file)}
-                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
                     title="Extract contents"
                     aria-label={`Extract contents of ${file.name}`}
                   >

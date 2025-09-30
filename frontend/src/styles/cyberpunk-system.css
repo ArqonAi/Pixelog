@@ -108,7 +108,7 @@ body {
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--scan-gradient);
+  background: none;
   animation: none;
   z-index: 1;
 }
