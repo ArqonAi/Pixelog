@@ -47,7 +47,7 @@ const ProgressModal: React.FC<ProgressModalProps> = ({ progress }) => {
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"
+                className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full mx-auto"
               />
             )}
           </div>

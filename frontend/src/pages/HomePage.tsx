@@ -173,16 +173,16 @@ const HomePage: React.FC = () => {
         >
           <CloudStorage />
         </motion.div>
-
-        {/* How it Works Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-        >
-          <Footer />
-        </motion.div>
       </main>
+
+      {/* Footer - Full Width */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.8 }}
+      >
+        <Footer />
+      </motion.div>
 
       {/* Progress Modal */}
       <AnimatePresence>

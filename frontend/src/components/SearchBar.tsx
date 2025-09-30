@@ -171,12 +171,12 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
           className="
             w-full pl-12 pr-12 py-4
             bg-gray-900/30 backdrop-blur-sm 
-            border border-cyan-500/20 rounded-lg
+            border border-gray-600/40 rounded-lg
             cyber-text-primary placeholder-gray-400
-            focus:outline-none focus:border-cyan-400/40 focus:bg-gray-900/50
+            focus:outline-none focus:border-gray-500/60 focus:bg-gray-900/50
             transition-all duration-300
             cyber-body text-base
-            hover:border-cyan-500/30
+            hover:border-gray-600/50
           "
         />
         
@@ -207,13 +207,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
             className="
               absolute top-full left-0 right-0 mt-2 z-50
               bg-gray-900/95 backdrop-blur-md 
-              border border-cyan-500/20 rounded-lg
+              border border-gray-600/40 rounded-lg
               max-h-80 overflow-y-auto
-              shadow-2xl shadow-cyan-500/10
+              shadow-2xl shadow-gray-900/30
             "
           >
             <div className="p-2">
-              <div className="cyber-mono text-xs cyber-text-secondary px-3 py-2 border-b border-cyan-500/10">
+              <div className="cyber-mono text-xs cyber-text-secondary px-3 py-2 border-b border-gray-600/20">
                 {results.length} result{results.length !== 1 ? 's' : ''} found
               </div>
               
@@ -268,9 +268,9 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
             className="
               absolute top-full left-0 right-0 mt-2 z-50
               bg-gray-900/95 backdrop-blur-md 
-              border border-cyan-500/20 rounded-lg
+              border border-gray-600/40 rounded-lg
               p-6 text-center
-              shadow-2xl shadow-cyan-500/10
+              shadow-2xl shadow-gray-900/30
             "
           >
             <Search className="w-12 h-12 cyber-text-secondary mx-auto mb-3" />

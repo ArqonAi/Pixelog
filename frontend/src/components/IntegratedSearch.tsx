@@ -255,12 +255,12 @@ const IntegratedSearch: React.FC<IntegratedSearchProps> = ({ className = '' }) =
           className="
             w-full pl-12 pr-12 py-4
             bg-gray-900/30 backdrop-blur-sm 
-            border border-cyan-500/20 rounded-lg
+            border border-gray-600/40 rounded-lg
             cyber-text-primary placeholder-gray-400
-            focus:outline-none focus:border-cyan-400/40 focus:bg-gray-900/50
+            focus:outline-none focus:border-gray-500/60 focus:bg-gray-900/50
             transition-all duration-300
             cyber-body text-base
-            hover:border-cyan-500/30
+            hover:border-gray-600/50
           "
         />
         
@@ -292,12 +292,12 @@ const IntegratedSearch: React.FC<IntegratedSearchProps> = ({ className = '' }) =
           >
             <div className="
               bg-gray-900/50 backdrop-blur-md 
-              border border-cyan-500/20 rounded-lg
-              shadow-2xl shadow-cyan-500/5
+              border border-gray-600/40 rounded-lg
+              shadow-2xl shadow-gray-900/20
             ">
               {/* Results Header */}
               {searchState.results && (
-                <div className="px-6 py-4 border-b border-cyan-500/10">
+                <div className="px-6 py-4 border-b border-gray-600/20">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <h3 className="cyber-h3 text-lg cyber-text-primary">Search Results</h3>
