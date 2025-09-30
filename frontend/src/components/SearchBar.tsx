@@ -226,8 +226,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ className = '' }) => {
                   onClick={() => handleResultClick(result.file)}
                   className="
                     w-full text-left p-3 rounded-lg
-                    hover:bg-cyan-400/10 transition-colors
-                    focus:outline-none focus:bg-cyan-400/10
+                    hover:bg-gray-700/20 transition-colors
+                    focus:outline-none focus:bg-gray-700/20
                     group
                   "
                 >

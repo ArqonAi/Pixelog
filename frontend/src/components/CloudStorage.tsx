@@ -188,8 +188,8 @@ const CloudStorage: React.FC<CloudStorageProps> = ({ className = '' }) => {
                 className={`
                   flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200
                   ${selectedProvider === provider.id 
-                    ? 'bg-cyan-400/20 cyber-text-primary border border-cyan-400/50' 
-                    : 'cyber-bg-panel cyber-text-secondary hover:bg-cyan-400/10 border border-transparent'
+                    ? 'bg-gray-600/40 cyber-text-primary border border-gray-500/50' 
+                    : 'cyber-bg-panel cyber-text-secondary hover:bg-gray-700/20 border border-transparent'
                   }
                 `}
                 whileHover={{ scale: 1.02 }}

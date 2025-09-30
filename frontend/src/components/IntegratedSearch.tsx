@@ -347,8 +347,8 @@ const IntegratedSearch: React.FC<IntegratedSearchProps> = ({ className = '' }) =
                         onClick={() => handleResultClick(hit)}
                         className="
                           w-full text-left p-4 rounded-lg
-                          cyber-bg-panel hover:bg-cyan-400/10 
-                          border border-transparent hover:border-cyan-400/20
+                          cyber-bg-panel hover:bg-gray-700/20 
+                          border border-transparent hover:border-gray-500/30
                           transition-all duration-200
                           group
                         "

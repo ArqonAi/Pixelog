@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Github, Star, Search } from 'lucide-react'
+import { Github, Terminal, Brain } from 'lucide-react'
 
 // ===== COMPONENT TYPES =====
 
@@ -37,8 +37,28 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center"
+            className="flex items-center space-x-1"
           >
+            {/* CLI */}
+            <a
+              href="/cli"
+              className="px-3 py-2 text-sm flex items-center space-x-2 cyber-text-secondary hover:cyber-text-primary transition-colors"
+              aria-label="CLI Documentation"
+            >
+              <Terminal className="w-4 h-4" />
+              <span>CLI</span>
+            </a>
+            
+            {/* LLM */}
+            <a
+              href="/llm"
+              className="px-3 py-2 text-sm flex items-center space-x-2 cyber-text-secondary hover:cyber-text-primary transition-colors"
+              aria-label="LLM Integration"
+            >
+              <Brain className="w-4 h-4" />
+              <span>LLM</span>
+            </a>
+            
             {/* Source */}
             <a
               href="https://github.com/ArqonAi/Pixelog"

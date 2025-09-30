@@ -81,12 +81,12 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) =
           className={`
             relative rounded-lg p-8 transition-all duration-300
             ${isDragOver 
-              ? 'bg-cyan-400/10' 
+              ? 'bg-gray-700/20' 
               : 'bg-gray-900/20'
             }
             ${isDisabled 
               ? 'opacity-50 cursor-not-allowed' 
-              : 'cursor-pointer hover:bg-cyan-400/5'
+              : 'cursor-pointer hover:bg-gray-700/10'
             }
           `}
           onDragOver={handleDragOver}
