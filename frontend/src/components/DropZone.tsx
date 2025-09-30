@@ -166,7 +166,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) =
               className={`
                 relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200
                 ${encryptionEnabled 
-                  ? 'bg-green-600' 
+                  ? 'bg-cyan-600' 
                   : 'bg-gray-600'
                 }
               `}

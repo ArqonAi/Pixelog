@@ -57,7 +57,7 @@ const CLIPage: React.FC = () => {
                 </button>
               </div>
               <div className="cyber-terminal-body">
-                <code className="cyber-mono text-green-400">
+                <code className="cyber-mono text-cyan-400">
                   go install github.com/ArqonAi/Pixelog/cmd/pixelog@latest
                 </code>
               </div>
@@ -75,7 +75,7 @@ const CLIPage: React.FC = () => {
                 </button>
               </div>
               <div className="cyber-terminal-body">
-                <code className="cyber-mono text-green-400">
+                <code className="cyber-mono text-cyan-400">
                   brew install ArqonAi/tap/pixelog
                 </code>
               </div>
@@ -128,7 +128,7 @@ const CLIPage: React.FC = () => {
                 </button>
               </div>
               <div className="cyber-terminal-body">
-                <code className="cyber-mono text-green-400">
+                <code className="cyber-mono text-cyan-400">
                   pixelog convert document.pdf
                 </code>
               </div>
@@ -146,7 +146,7 @@ const CLIPage: React.FC = () => {
                 </button>
               </div>
               <div className="cyber-terminal-body">
-                <code className="cyber-mono text-green-400">
+                <code className="cyber-mono text-cyan-400">
                   pixelog convert *.pdf *.docx *.txt
                 </code>
               </div>
@@ -164,7 +164,7 @@ const CLIPage: React.FC = () => {
                 </button>
               </div>
               <div className="cyber-terminal-body">
-                <code className="cyber-mono text-green-400">
+                <code className="cyber-mono text-cyan-400">
                   pixelog convert --encrypt --password "secure123" document.pdf
                 </code>
               </div>
@@ -183,7 +183,7 @@ const CLIPage: React.FC = () => {
           
           <div className="space-y-6">
             <div className="cyber-bg-panel p-6 rounded-lg">
-              <h3 className="cyber-h3 text-lg mb-3 text-green-400">convert</h3>
+              <h3 className="cyber-h3 text-lg mb-3 text-cyan-400">convert</h3>
               <p className="cyber-body cyber-text-secondary mb-4">
                 Convert files to .pixe format (QR-encoded MP4 videos)
               </p>
@@ -197,7 +197,7 @@ const CLIPage: React.FC = () => {
             </div>
 
             <div className="cyber-bg-panel p-6 rounded-lg">
-              <h3 className="cyber-h3 text-lg mb-3 text-green-400">extract</h3>
+              <h3 className="cyber-h3 text-lg mb-3 text-cyan-400">extract</h3>
               <p className="cyber-body cyber-text-secondary mb-4">
                 Extract original files from .pixe archives
               </p>
@@ -209,7 +209,7 @@ const CLIPage: React.FC = () => {
             </div>
 
             <div className="cyber-bg-panel p-6 rounded-lg">
-              <h3 className="cyber-h3 text-lg mb-3 text-green-400">list</h3>
+              <h3 className="cyber-h3 text-lg mb-3 text-cyan-400">list</h3>
               <p className="cyber-body cyber-text-secondary mb-4">
                 List contents of .pixe archives without extracting
               </p>
@@ -220,7 +220,7 @@ const CLIPage: React.FC = () => {
             </div>
 
             <div className="cyber-bg-panel p-6 rounded-lg">
-              <h3 className="cyber-h3 text-lg mb-3 text-green-400">search</h3>
+              <h3 className="cyber-h3 text-lg mb-3 text-cyan-400">search</h3>
               <p className="cyber-body cyber-text-secondary mb-4">
                 Search through .pixe archives using AI-powered semantic search
               </p>
@@ -248,7 +248,7 @@ const CLIPage: React.FC = () => {
                 <span className="cyber-mono text-sm">Batch convert with high quality</span>
               </div>
               <div className="cyber-terminal-body">
-                <code className="cyber-mono text-green-400">
+                <code className="cyber-mono text-cyan-400">
                   pixelog convert --quality 18 --output ./converted/ ~/Documents/*.pdf
                 </code>
               </div>
@@ -259,18 +259,18 @@ const CLIPage: React.FC = () => {
                 <span className="cyber-mono text-sm">Extract with password</span>
               </div>
               <div className="cyber-terminal-body">
-                <code className="cyber-mono text-green-400">
+                <code className="cyber-mono text-cyan-400">
                   pixelog extract --password "mypass123" --output ./extracted/ archive.pixe
                 </code>
               </div>
             </div>
 
-            <div class="cyber-terminal">
+            <div className="cyber-terminal">
               <div className="cyber-terminal-header">
                 <span className="cyber-mono text-sm">Search across multiple archives</span>
               </div>
               <div className="cyber-terminal-body">
-                <code className="cyber-mono text-green-400">
+                <code className="cyber-mono text-cyan-400">
                   pixelog search --query "tax documents 2024" --limit 5 *.pixe
                 </code>
               </div>
@@ -299,7 +299,7 @@ const CLIPage: React.FC = () => {
                 <span className="cyber-mono text-sm">config.yaml</span>
               </div>
               <div className="cyber-terminal-body">
-                <pre className="cyber-mono text-sm text-green-400">
+                <pre className="cyber-mono text-sm text-cyan-400">
 {`# Video encoding settings
 quality: 23
 framerate: 0.5

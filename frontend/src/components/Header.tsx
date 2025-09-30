@@ -20,17 +20,18 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center space-x-4"
           >
-            {/* Logo */}
-            <div className="w-10 h-10 cyber-bg-void rounded flex items-center justify-center">
-              <span className="cyber-text-cyber font-bold text-lg font-mono">Π</span>
-            </div>
-            
-            {/* Brand */}
-            <div>
-              <h1 className="cyber-h2 text-xl cyber-text-primary font-display">
-                Pixelog
-              </h1>
-            </div>
+            {/* Logo & Brand - Link to Home */}
+            <a href="/" className="flex items-center space-x-4 hover:opacity-80 transition-opacity">
+              <div className="w-10 h-10 cyber-bg-void rounded flex items-center justify-center">
+                <span className="cyber-text-cyber font-bold text-lg font-mono">Π</span>
+              </div>
+              
+              <div>
+                <h1 className="cyber-h2 text-xl cyber-text-primary font-display">
+                  Pixelog
+                </h1>
+              </div>
+            </a>
           </motion.div>
 
           {/* Controls */}

@@ -93,7 +93,7 @@ const LLMPage: React.FC = () => {
             >
               {isProcessing ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
                   Processing...
                 </>
               ) : (
