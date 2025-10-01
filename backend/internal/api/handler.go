@@ -832,8 +832,26 @@ func (h *Handler) callOpenRouter(model, apiKey, prompt string) (string, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("HTTP-Referer", "http://localhost:3000")
+	// OpenRouter requires these headers - try wildcard approach
+	req.Header.Set("HTTP-Referer", "https://localhost")
 	req.Header.Set("X-Title", "Pixelog")
+	// Alternative: some keys work without strict referrer checking
+	req.Header.Set("User-Agent", "Pixelog/1.0")
+	
+	// Debug the actual API key format (first 10 chars only)
+	if len(apiKey) > 10 {
+		fmt.Printf("OpenRouter API key starts with: %s...\n", apiKey[:10])
+	} else {
+		fmt.Printf("OpenRouter API key length: %d\n", len(apiKey))
+	}
+	
+	// Debug: Print the request details (without API key)
+	fmt.Printf("OpenRouter request - Model: %s, Headers: %v\n", model, map[string]string{
+		"Content-Type": "application/json",
+		"HTTP-Referer": "http://localhost:3000",
+		"X-Title": "Pixelog",
+		"Authorization": "Bearer [REDACTED]",
+	})
 
 	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Do(req)

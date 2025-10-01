@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Brain, ArrowLeft, Upload, MessageSquare, Settings, Key, Eye, EyeOff, Send, FileText, Bot, Sliders, Zap, Trash2, Power, PowerOff } from 'lucide-react'
+import { Brain, ArrowLeft, Upload, MessageSquare, Settings, Key, Eye, EyeOff, Send, FileText, Bot, Sliders, Zap, Trash2, Power, PowerOff, Download } from 'lucide-react'
 
 interface ProcessedMemory {
   id: string
@@ -174,6 +174,75 @@ const LLMPage: React.FC = () => {
     })
   }
 
+  const exportChatAsPixe = async () => {
+    if (chatMessages.length === 0) {
+      alert('No chat messages to export')
+      return
+    }
+
+    try {
+      // Format chat messages as text content
+      const chatContent = chatMessages.map(msg => {
+        const timestamp = new Date().toISOString()
+        const role = msg.type === 'user' ? 'USER' : 'ASSISTANT'
+        return `[${timestamp}] ${role}: ${msg.content}`
+      }).join('\n\n')
+
+      // Create a text blob with chat content
+      const chatBlob = new Blob([chatContent], { type: 'text/plain' })
+      const chatFile = new File([chatBlob], `chat-session-${Date.now()}.txt`, { type: 'text/plain' })
+
+      // Upload to backend for conversion to .pixe
+      const formData = new FormData()
+      formData.append('files', chatFile)
+
+      const response = await fetch('http://localhost:8080/api/convert', {
+        method: 'POST',
+        body: formData
+      })
+
+      const result = await response.json()
+      
+      if (response.ok) {
+        // Wait a moment for conversion to complete, then download
+        setTimeout(async () => {
+          try {
+            // The job_id from the conversion response should be the file ID
+            const fileId = result.job_id.replace('job_', '')
+            
+            // Download the converted .pixe file
+            const downloadResponse = await fetch(`http://localhost:8080/api/files/${fileId}/download`)
+            
+            if (downloadResponse.ok) {
+              const blob = await downloadResponse.blob()
+              const url = window.URL.createObjectURL(blob)
+              const link = document.createElement('a')
+              link.href = url
+              link.download = `chat-session-${Date.now()}.pixe`
+              document.body.appendChild(link)
+              link.click()
+              document.body.removeChild(link)
+              window.URL.revokeObjectURL(url)
+              
+              alert('Chat session exported as .pixe file!')
+            } else {
+              throw new Error('Failed to download converted file')
+            }
+          } catch (error) {
+            console.error('Error downloading .pixe file:', error)
+            alert('Error downloading .pixe file. Please try again.')
+          }
+        }, 3000) // Wait 3 seconds for conversion
+        
+      } else {
+        throw new Error('Failed to convert chat to .pixe format')
+      }
+    } catch (error) {
+      console.error('Error exporting chat:', error)
+      alert('Error exporting chat session. Please try again.')
+    }
+  }
+
   const processFiles = async () => {
     if (files.length === 0) return
     
@@ -220,6 +289,14 @@ const LLMPage: React.FC = () => {
     setIsThinking(true)
 
     try {
+      console.log('Sending chat request:', {
+        query: currentInput,
+        memory_ids: connectedMemoryIds,
+        provider: selectedProvider,
+        model: selectedModel,
+        api_key: apiKey ? '[REDACTED]' : 'MISSING'
+      })
+      
       const response = await fetch('http://localhost:8080/api/llm/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -232,7 +309,16 @@ const LLMPage: React.FC = () => {
         })
       })
 
+      console.log('Response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('API error response:', errorText)
+        throw new Error(`API returned ${response.status}: ${errorText}`)
+      }
+
       const result = await response.json()
+      console.log('Chat result:', result)
       
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -457,7 +543,7 @@ const LLMPage: React.FC = () => {
           <div className="cyber-terminal h-[700px] flex flex-col mx-auto max-w-4xl">
             <div className="cyber-terminal-header">
               <div className="flex items-center justify-between w-full">
-                <div>
+                <div className="flex-1">
                   <h2 className="cyber-h2 text-lg">Chat with Your Memories</h2>
                   <div className="flex items-center gap-4 cyber-mono text-xs cyber-text-secondary">
                     <span>{connectedMemories.size} memories connected</span>
@@ -472,6 +558,18 @@ const LLMPage: React.FC = () => {
                     </span>
                   </div>
                 </div>
+                
+                {/* Export Chat Button */}
+                {chatMessages.length > 0 && (
+                  <button
+                    onClick={exportChatAsPixe}
+                    className="cyber-btn-secondary flex items-center gap-2 px-3 py-2"
+                    title="Export chat session as .pixe file"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">Export Chat</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setShowSettings(!showSettings)}
                   className="cyber-btn-secondary p-2 flex items-center gap-2"
@@ -576,12 +674,11 @@ const LLMPage: React.FC = () => {
                   </div>
                 ) : (
                   chatMessages.map((message) => (
-                    <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} mb-6`}>
+                    <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-start' : 'justify-start'} mb-6`}>
                       <div className={`
-                        max-w-[85%] min-w-[200px] rounded-xl p-5 shadow-lg
                         ${message.type === 'user' 
-                          ? 'bg-gradient-to-br from-cyan-600/20 to-cyan-500/30 border border-cyan-500/30 cyber-text-primary' 
-                          : 'cyber-bg-panel border border-gray-600/40 cyber-text-primary'
+                          ? 'w-full cyber-text-primary' 
+                          : 'max-w-[85%] min-w-[200px] rounded-xl p-5 shadow-lg cyber-bg-panel border border-gray-600/40 cyber-text-primary'
                         }
                       `}>
                         <p className="cyber-body">{message.content}</p>
