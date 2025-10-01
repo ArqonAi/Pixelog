@@ -735,6 +735,8 @@ func (h *Handler) callLLMProvider(provider, model, apiKey, prompt string) (strin
 		return h.callOpenRouter(model, apiKey, prompt)
 	case "google":
 		return h.callGoogleAI(model, apiKey, prompt)
+	case "anthropic":
+		return h.callAnthropic(model, apiKey, prompt)
 	case "ollama":
 		return h.callOllama(model, prompt)
 	default:
@@ -879,11 +881,200 @@ func (h *Handler) callOpenRouter(model, apiKey, prompt string) (string, error) {
 }
 
 func (h *Handler) callGoogleAI(model, apiKey, prompt string) (string, error) {
-	// Google AI (Gemini) implementation
-	return "", fmt.Errorf("Google AI integration not implemented yet")
+	// Google AI (Gemini) API implementation
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, apiKey)
+	
+	reqBody := map[string]interface{}{
+		"contents": []map[string]interface{}{
+			{
+				"parts": []map[string]string{
+					{"text": prompt},
+				},
+			},
+		},
+		"generationConfig": map[string]interface{}{
+			"maxOutputTokens": 2000,
+			"temperature": 0.7,
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var response map[string]interface{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("Google AI API error: %s", string(body))
+	}
+
+	candidates, ok := response["candidates"].([]interface{})
+	if !ok || len(candidates) == 0 {
+		return "", fmt.Errorf("invalid response format")
+	}
+
+	firstCandidate, ok := candidates[0].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid candidate format")
+	}
+
+	content, ok := firstCandidate["content"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid content format")
+	}
+
+	parts, ok := content["parts"].([]interface{})
+	if !ok || len(parts) == 0 {
+		return "", fmt.Errorf("invalid parts format")
+	}
+
+	firstPart, ok := parts[0].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid part format")
+	}
+
+	text, ok := firstPart["text"].(string)
+	if !ok {
+		return "", fmt.Errorf("invalid text format")
+	}
+
+	return text, nil
+}
+
+func (h *Handler) callAnthropic(model, apiKey, prompt string) (string, error) {
+	// Anthropic (Claude) API implementation
+	reqBody := map[string]interface{}{
+		"model": model,
+		"max_tokens": 2000,
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", apiKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var response map[string]interface{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("Anthropic API error: %s", string(body))
+	}
+
+	content, ok := response["content"].([]interface{})
+	if !ok || len(content) == 0 {
+		return "", fmt.Errorf("invalid response format")
+	}
+
+	firstContent, ok := content[0].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid content format")
+	}
+
+	text, ok := firstContent["text"].(string)
+	if !ok {
+		return "", fmt.Errorf("invalid text format")
+	}
+
+	return text, nil
 }
 
 func (h *Handler) callOllama(model, prompt string) (string, error) {
-	// Local Ollama implementation
-	return "", fmt.Errorf("Ollama integration not implemented yet")
+	// Local Ollama API implementation
+	reqBody := map[string]interface{}{
+		"model": model,
+		"prompt": prompt,
+		"stream": false,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", "http://localhost:11434/api/generate", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 120 * time.Second} // Longer timeout for local inference
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("Ollama connection failed - is Ollama running on localhost:11434? Error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var response map[string]interface{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("Ollama API error: %s", string(body))
+	}
+
+	responseText, ok := response["response"].(string)
+	if !ok {
+		return "", fmt.Errorf("invalid response format")
+	}
+
+	return responseText, nil
 }
