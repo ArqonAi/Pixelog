@@ -44,7 +44,7 @@ const LLMPage: React.FC = () => {
     return localStorage.getItem('pixelog-llm-provider') || 'openrouter'
   })
   const [selectedModel, setSelectedModel] = useState<string>(() => {
-    return localStorage.getItem('pixelog-llm-model') || 'deepseek/deepseek-v3-chat'
+    return localStorage.getItem('pixelog-llm-model') || 'deepseek/deepseek-chat'
   })
   const [apiKey, setApiKey] = useState<string>(() => {
     return localStorage.getItem('pixelog-llm-apikey') || ''
@@ -52,56 +52,60 @@ const LLMPage: React.FC = () => {
   const [showApiKey, setShowApiKey] = useState<boolean>(false)
   const [showSettings, setShowSettings] = useState<boolean>(false)
 
-  // AI Provider configurations - REAL WORKING MODELS ONLY
+  // AI Provider configurations - REAL VERIFIED WORKING MODELS
   const aiProviders = {
     openai: {
       name: 'OpenAI',
-      models: ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+      models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
       keyPlaceholder: 'sk-...',
       website: 'https://platform.openai.com/api-keys'
     },
     anthropic: {
       name: 'Anthropic',
-      models: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'],
+      models: [
+        'claude-3-5-sonnet-20241022',
+        'claude-3-5-haiku-20241022', 
+        'claude-3-opus-20240229',
+        'claude-3-haiku-20240307'
+      ],
       keyPlaceholder: 'sk-ant-...',
       website: 'https://console.anthropic.com/'
     },
     google: {
       name: 'Google Gemini',
-      models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro'],
+      models: [
+        'gemini-2.5-flash',
+        'gemini-2.0-flash-001',
+        'gemini-1.5-pro',
+        'gemini-1.5-flash'
+      ],
       keyPlaceholder: 'AIza...',
       website: 'https://aistudio.google.com/app/apikey'
     },
     openrouter: {
       name: 'OpenRouter',
       models: [
-        // REAL WORKING MODELS ONLY
-        // DeepSeek Models (confirmed working)
-        'deepseek/deepseek-v3-chat',
-        'deepseek/deepseek-coder',
+        // VERIFIED WORKING OPENROUTER MODEL IDS FROM USER
         'deepseek/deepseek-chat',
-        // OpenAI Models (real)
-        'openai/gpt-4o',
-        'openai/gpt-4-turbo',
-        'openai/gpt-4',
-        'openai/gpt-3.5-turbo',
-        // Anthropic Models (real)
-        'anthropic/claude-3.5-sonnet',
+        'deepseek/deepseek-chat-v3-0324',
+        'deepseek/deepseek-chat-v3.1',
+        'moonshotai/kimi-k2',
+        'anthropic/claude-3-5-sonnet',
         'anthropic/claude-3-opus',
+        'anthropic/claude-3.5-haiku',
         'anthropic/claude-3-haiku',
-        // Google Models (real)
-        'google/gemini-pro-1.5',
-        'google/gemini-flash-1.5',
-        // Meta Models (real)
-        'meta-llama/llama-3.1-405b-instruct',
-        'meta-llama/llama-3.1-70b-instruct',
-        'meta-llama/llama-3.1-8b-instruct',
-        // Mistral Models (real)
-        'mistralai/mistral-large',
-        'mistralai/mixtral-8x7b-instruct',
-        // Qwen Models (real)
-        'qwen/qwen-2.5-72b-instruct',
-        'qwen/qwen-2-72b-instruct'
+        'anthropic/claude-3.7-sonnet',
+        'anthropic/claude-opus-4',
+        'anthropic/claude-sonnet-4',
+        'openai/gpt-3.5-turbo',
+        'openai/gpt-4',
+        'openai/gpt-4o',
+        'openai/gpt-3.5-turbo-16k',
+        'google/gemini-2.0-flash-001',
+        'google/gemini-2.0-flash-exp:free',
+        'google/gemini-2.0-flash-lite-001',
+        'google/gemini-2.5-flash',
+        'mistralai/mistral-7b-instruct'
       ],
       keyPlaceholder: 'sk-or-...',
       website: 'https://openrouter.ai/keys'
