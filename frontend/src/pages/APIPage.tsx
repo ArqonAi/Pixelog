@@ -4,24 +4,6 @@ import { Code, ExternalLink, ArrowLeft, Book, Terminal, Zap } from 'lucide-react
 const APIPage: React.FC = () => {
   return (
     <div className="min-h-screen cyber-bg-void">
-      <div className="cyber-bg-panel border-b border-gray-800/50">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-4">
-            <a href="/" className="cyber-text-secondary hover:cyber-text-primary transition-colors">
-              <ArrowLeft className="w-5 h-5" />
-            </a>
-            <div className="flex items-center gap-3">
-              <Code className="w-8 h-8 cyber-text-primary" />
-              <div>
-                <h1 className="cyber-h1 text-2xl">API Documentation</h1>
-                <p className="cyber-body cyber-text-secondary">
-                  REST API endpoints and SDK integration
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div className="container mx-auto px-4 py-8">
         <div className="cyber-terminal">

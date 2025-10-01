@@ -40,16 +40,6 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center space-x-1"
           >
-            {/* Create .pixe */}
-            <a
-              href="/create"
-              className="cyber-btn-secondary text-sm flex items-center space-x-2"
-              aria-label="Create .pixe Files"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create .pixe</span>
-            </a>
-            
             {/* CLI */}
             <a
               href="/cli"
@@ -80,6 +70,16 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
             >
               <Github className="w-4 h-4" />
               <span>Source</span>
+            </a>
+            
+            {/* Create .pixe */}
+            <a
+              href="/create"
+              className="px-4 py-2 text-sm flex items-center space-x-2 bg-cyan-600/20 border border-cyan-500/30 rounded-md hover:bg-cyan-600/30 hover:border-cyan-400/50 transition-all cyber-text-primary font-medium"
+              aria-label="Create .pixe Files"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create .pixe</span>
             </a>
           </motion.div>
         </div>
