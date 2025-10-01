@@ -79,7 +79,47 @@ const LLMPage: React.FC = () => {
     },
     openrouter: {
       name: 'OpenRouter',
-      models: ['openai/gpt-4', 'anthropic/claude-3-opus', 'google/gemini-pro', 'meta-llama/llama-3-70b'],
+      models: [
+        // OpenAI Models
+        'openai/gpt-4-turbo',
+        'openai/gpt-4',
+        'openai/gpt-3.5-turbo',
+        // Anthropic Models
+        'anthropic/claude-3-opus',
+        'anthropic/claude-3-sonnet',
+        'anthropic/claude-3-haiku',
+        // Google Models
+        'google/gemini-pro-1.5',
+        'google/gemini-pro',
+        // Meta Models
+        'meta-llama/llama-3.1-405b-instruct',
+        'meta-llama/llama-3.1-70b-instruct',
+        'meta-llama/llama-3-70b-instruct',
+        // DeepSeek Models
+        'deepseek/deepseek-chat',
+        'deepseek/deepseek-coder',
+        // Moonshot (Kimi) Models
+        'moonshot/moonshot-v1-8k',
+        'moonshot/moonshot-v1-32k',
+        'moonshot/moonshot-v1-128k',
+        // Mistral Models
+        'mistralai/mistral-7b-instruct',
+        'mistralai/mixtral-8x7b-instruct',
+        'mistralai/mixtral-8x22b-instruct',
+        // Cohere Models
+        'cohere/command-r',
+        'cohere/command-r-plus',
+        // Qwen Models
+        'qwen/qwen-2-72b-instruct',
+        'qwen/qwen-2.5-72b-instruct',
+        // Perplexity Models
+        'perplexity/llama-3.1-sonar-large-128k-online',
+        'perplexity/llama-3.1-sonar-small-128k-online',
+        // Other Popular Models
+        'nvidia/nemotron-4-340b-instruct',
+        'liquid/lfm-40b',
+        'inflection/inflection-3-pi'
+      ],
       keyPlaceholder: 'sk-or-...',
       website: 'https://openrouter.ai/keys'
     }
