@@ -16,6 +16,7 @@ const App: React.FC = () => {
         <Route path="/create" element={<CreatePage />} />
         <Route path="/cli" element={<CLIPage />} />
         <Route path="/api" element={<APIPage />} />
+        <Route path="/test" element={<div>Test Route Works!</div>} />
       </Routes>
     </div>
   )
