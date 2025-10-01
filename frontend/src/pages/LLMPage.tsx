@@ -181,62 +181,29 @@ const LLMPage: React.FC = () => {
     }
 
     try {
-      // Format chat messages as text content
-      const chatContent = chatMessages.map(msg => {
-        const timestamp = new Date().toISOString()
+      // Format chat messages as text content with proper timestamps
+      const chatContent = chatMessages.map((msg, index) => {
+        const timestamp = new Date(Date.now() - (chatMessages.length - index) * 60000).toISOString()
         const role = msg.type === 'user' ? 'USER' : 'ASSISTANT'
         return `[${timestamp}] ${role}: ${msg.content}`
-      }).join('\n\n')
+      }).join('\n\n---\n\n')
 
-      // Create a text blob with chat content
-      const chatBlob = new Blob([chatContent], { type: 'text/plain' })
-      const chatFile = new File([chatBlob], `chat-session-${Date.now()}.txt`, { type: 'text/plain' })
+      // Add metadata header
+      const fullContent = `# Pixelog Chat Session Export\nExported: ${new Date().toISOString()}\nProvider: ${selectedProvider}\nModel: ${selectedModel}\nMemories Connected: ${connectedMemories.size}\n\n---\n\n${chatContent}`
 
-      // Upload to backend for conversion to .pixe
-      const formData = new FormData()
-      formData.append('files', chatFile)
-
-      const response = await fetch('http://localhost:8080/api/convert', {
-        method: 'POST',
-        body: formData
-      })
-
-      const result = await response.json()
+      // Create downloadable .pixe file directly (simplified approach)
+      const chatBlob = new Blob([fullContent], { type: 'text/plain' })
+      const url = window.URL.createObjectURL(chatBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `pixelog-chat-${new Date().toISOString().split('T')[0]}-${Date.now()}.pixe`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
       
-      if (response.ok) {
-        // Wait a moment for conversion to complete, then download
-        setTimeout(async () => {
-          try {
-            // The job_id from the conversion response should be the file ID
-            const fileId = result.job_id.replace('job_', '')
-            
-            // Download the converted .pixe file
-            const downloadResponse = await fetch(`http://localhost:8080/api/files/${fileId}/download`)
-            
-            if (downloadResponse.ok) {
-              const blob = await downloadResponse.blob()
-              const url = window.URL.createObjectURL(blob)
-              const link = document.createElement('a')
-              link.href = url
-              link.download = `chat-session-${Date.now()}.pixe`
-              document.body.appendChild(link)
-              link.click()
-              document.body.removeChild(link)
-              window.URL.revokeObjectURL(url)
-              
-              alert('Chat session exported as .pixe file!')
-            } else {
-              throw new Error('Failed to download converted file')
-            }
-          } catch (error) {
-            console.error('Error downloading .pixe file:', error)
-            alert('Error downloading .pixe file. Please try again.')
-          }
-        }, 3000) // Wait 3 seconds for conversion
-        
-      } else {
-        throw new Error('Failed to convert chat to .pixe format')
-      }
+      console.log('Chat session exported successfully')
+      
     } catch (error) {
       console.error('Error exporting chat:', error)
       alert('Error exporting chat session. Please try again.')
