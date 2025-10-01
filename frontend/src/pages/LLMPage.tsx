@@ -181,7 +181,7 @@ const LLMPage: React.FC = () => {
     }
 
     try {
-      // Format chat messages as text content with proper timestamps
+      // Format chat messages as structured content
       const chatContent = chatMessages.map((msg, index) => {
         const timestamp = new Date(Date.now() - (chatMessages.length - index) * 60000).toISOString()
         const role = msg.type === 'user' ? 'USER' : 'ASSISTANT'
@@ -191,22 +191,33 @@ const LLMPage: React.FC = () => {
       // Add metadata header
       const fullContent = `# Pixelog Chat Session Export\nExported: ${new Date().toISOString()}\nProvider: ${selectedProvider}\nModel: ${selectedModel}\nMemories Connected: ${connectedMemories.size}\n\n---\n\n${chatContent}`
 
-      // Create downloadable .pixe file directly (simplified approach)
+      // Create a real text file and send to REAL conversion system
       const chatBlob = new Blob([fullContent], { type: 'text/plain' })
-      const url = window.URL.createObjectURL(chatBlob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `pixelog-chat-${new Date().toISOString().split('T')[0]}-${Date.now()}.pixe`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
+      const chatFile = new File([chatBlob], `chat-session-${Date.now()}.txt`, { type: 'text/plain' })
+
+      // Use REAL backend conversion API
+      const formData = new FormData()
+      formData.append('files', chatFile)
+
+      console.log('Sending to real conversion API...')
+      const response = await fetch('http://localhost:8080/api/convert', {
+        method: 'POST',
+        body: formData
+      })
+
+      const result = await response.json()
+      console.log('Conversion result:', result)
       
-      console.log('Chat session exported successfully')
+      if (response.ok) {
+        alert(`Chat conversion started! Job ID: ${result.job_id}. Check the Create page to download the .pixe file once conversion completes.`)
+      } else {
+        throw new Error(`Conversion failed: ${result.error || 'Unknown error'}`)
+      }
       
     } catch (error) {
       console.error('Error exporting chat:', error)
-      alert('Error exporting chat session. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      alert(`Error exporting chat: ${errorMessage}`)
     }
   }
 
