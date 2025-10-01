@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Github, Terminal, Brain } from 'lucide-react'
+import { Github, Terminal, Code, Upload, Plus } from 'lucide-react'
 
 // ===== COMPONENT TYPES =====
 
@@ -40,6 +40,16 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center space-x-1"
           >
+            {/* Create .pixe */}
+            <a
+              href="/create"
+              className="cyber-btn-secondary text-sm flex items-center space-x-2"
+              aria-label="Create .pixe Files"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create .pixe</span>
+            </a>
+            
             {/* CLI */}
             <a
               href="/cli"
@@ -50,14 +60,14 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
               <span>CLI</span>
             </a>
             
-            {/* LLM */}
+            {/* API */}
             <a
-              href="/llm"
+              href="/api"
               className="px-3 py-2 text-sm flex items-center space-x-2 cyber-text-secondary hover:cyber-text-primary transition-colors"
-              aria-label="LLM Integration"
+              aria-label="API Documentation"
             >
-              <Brain className="w-4 h-4" />
-              <span>LLM</span>
+              <Code className="w-4 h-4" />
+              <span>API</span>
             </a>
             
             {/* Source */}

@@ -1,9 +1,10 @@
 import React from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
-import HomePage from './pages/HomePage'
-import CLIPage from './pages/CLIPage'
 import LLMPage from './pages/LLMPage'
+import CreatePage from './pages/CreatePage'
+import CLIPage from './pages/CLIPage'
+import APIPage from './pages/APIPage'
 
 const App: React.FC = () => {
   return (
@@ -11,9 +12,10 @@ const App: React.FC = () => {
       <Header onSearchClick={() => {}} />
       
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<LLMPage />} />
+        <Route path="/create" element={<CreatePage />} />
         <Route path="/cli" element={<CLIPage />} />
-        <Route path="/llm" element={<LLMPage />} />
+        <Route path="/api" element={<APIPage />} />
       </Routes>
     </div>
   )
