@@ -186,23 +186,23 @@ const CreatePage: React.FC = () => {
     if (!selectedFileForLLM) return
     
     try {
-      // Create form data with the .pixe file
-      const formData = new FormData()
-      
-      // Get the actual file blob first
-      const blob = await pixelogApi.downloadPixeFile(selectedFileForLLM.id)
-      const file = new File([blob], selectedFileForLLM.name, { type: 'application/octet-stream' })
-      
-      formData.append('files', file)
+      // Send file info to LLM processing endpoint
+      const requestBody: any = {
+        file_ids: [selectedFileForLLM.id],
+        file_names: [selectedFileForLLM.name]
+      }
       
       if (encryptionKey) {
-        formData.append('decryption_key', encryptionKey)
+        requestBody.decryption_key = encryptionKey
       }
       
       // Send to LLM processing endpoint
       const response = await fetch('/api/llm/memories', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
       })
       
       if (!response.ok) {
@@ -211,6 +211,20 @@ const CreatePage: React.FC = () => {
       
       const result = await response.json()
       showToast(`File processed for LLM: ${result.message}`, 'success')
+      
+      // Store processed memory in localStorage for LLM page
+      const processedMemories = JSON.parse(localStorage.getItem('pixelog-llm-memories') || '[]')
+      const newMemory = {
+        id: selectedFileForLLM.id,
+        filename: selectedFileForLLM.name,
+        size: selectedFileForLLM.size || 0,
+        processedAt: new Date().toISOString(),
+        chunks: result.memories?.[0]?.chunks || 1000,
+        status: 'ready',
+        encrypted: !!encryptionKey
+      }
+      processedMemories.push(newMemory)
+      localStorage.setItem('pixelog-llm-memories', JSON.stringify(processedMemories))
       
       // Close modal and reset state
       setShowLLMModal(false)
