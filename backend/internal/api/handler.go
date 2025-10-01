@@ -1,7 +1,10 @@
 package api
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -607,15 +610,66 @@ func (h *Handler) LLMChat(c *gin.Context) {
 		return
 	}
 
-	// For now, return a structured response indicating the query was received
-	// In a full implementation, this would:
-	// 1. Extract content from the specified .pixe files
-	// 2. Send to the specified LLM provider with API key
-	// 3. Return the AI response with source references
-	
+	if req.APIKey == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "API key is required"})
+		return
+	}
+
+	// Extract content from .pixe files
+	var extractedContent []string
+	outputDir := h.converter.GetOutputDir()
+	if outputDir == "" {
+		outputDir = "./output"
+	}
+
+	for _, memoryID := range req.MemoryIDs {
+		var filePath string
+		
+		// Try multiple paths to find the file
+		filePath = filepath.Join(outputDir, memoryID+".pixe")
+		if _, err := os.Stat(filePath); err != nil {
+			filePath = filepath.Join("./output", memoryID+".pixe")
+			if _, err := os.Stat(filePath); err != nil {
+				filePath = filepath.Join("output", memoryID+".pixe")
+				if _, err := os.Stat(filePath); err != nil {
+					continue // Skip if file not found
+				}
+			}
+		}
+
+		// Read file content
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			fmt.Printf("Error reading file %s: %v\n", filePath, err)
+			continue
+		}
+
+		// Convert to string and add to extracted content
+		fileContent := string(content)
+		if len(fileContent) > 0 {
+			extractedContent = append(extractedContent, fmt.Sprintf("File %s:\n%s", memoryID, fileContent))
+		}
+	}
+
+	if len(extractedContent) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No content found in specified memory files"})
+		return
+	}
+
+	// Prepare context for LLM
+	context := strings.Join(extractedContent, "\n\n---\n\n")
+	prompt := fmt.Sprintf("Context from memory files:\n%s\n\nUser question: %s", context, req.Query)
+
+	// Make API call to LLM provider
+	allmResponse, err := h.callLLMProvider(req.Provider, req.Model, req.APIKey, prompt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("LLM API error: %v", err)})
+		return
+	}
+
 	response := ChatResponse{
-		Content:   fmt.Sprintf("[LLM Processing] Query received: '%s'. In a full implementation, this would extract content from %d memory files and send to %s/%s for AI processing.", req.Query, len(req.MemoryIDs), req.Provider, req.Model),
-		Sources:   []map[string]interface{}{},
+		Content:   allmResponse,
+		Sources:   []map[string]interface{}{}, // TODO: Add source references
 		Model:     req.Model,
 		Provider:  req.Provider,
 		MemoryIDs: req.MemoryIDs,
@@ -670,4 +724,166 @@ func formatFileSize(bytes int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// Real LLM Provider Integration
+func (h *Handler) callLLMProvider(provider, model, apiKey, prompt string) (string, error) {
+	switch provider {
+	case "openai":
+		return h.callOpenAI(model, apiKey, prompt)
+	case "openrouter":
+		return h.callOpenRouter(model, apiKey, prompt)
+	case "google":
+		return h.callGoogleAI(model, apiKey, prompt)
+	case "ollama":
+		return h.callOllama(model, prompt)
+	default:
+		return "", fmt.Errorf("unsupported provider: %s", provider)
+	}
+}
+
+func (h *Handler) callOpenAI(model, apiKey, prompt string) (string, error) {
+	reqBody := map[string]interface{}{
+		"model": model,
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+		"max_tokens": 2000,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var response map[string]interface{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("OpenAI API error: %s", string(body))
+	}
+
+	choices, ok := response["choices"].([]interface{})
+	if !ok || len(choices) == 0 {
+		return "", fmt.Errorf("invalid response format")
+	}
+
+	firstChoice, ok := choices[0].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid choice format")
+	}
+
+	message, ok := firstChoice["message"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid message format")
+	}
+
+	content, ok := message["content"].(string)
+	if !ok {
+		return "", fmt.Errorf("invalid content format")
+	}
+
+	return content, nil
+}
+
+func (h *Handler) callOpenRouter(model, apiKey, prompt string) (string, error) {
+	reqBody := map[string]interface{}{
+		"model": model,
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+		"max_tokens": 2000,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("HTTP-Referer", "http://localhost:3000")
+	req.Header.Set("X-Title", "Pixelog")
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var response map[string]interface{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("OpenRouter API error: %s", string(body))
+	}
+
+	choices, ok := response["choices"].([]interface{})
+	if !ok || len(choices) == 0 {
+		return "", fmt.Errorf("invalid response format")
+	}
+
+	firstChoice, ok := choices[0].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid choice format")
+	}
+
+	message, ok := firstChoice["message"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid message format")
+	}
+
+	content, ok := message["content"].(string)
+	if !ok {
+		return "", fmt.Errorf("invalid content format")
+	}
+
+	return content, nil
+}
+
+func (h *Handler) callGoogleAI(model, apiKey, prompt string) (string, error) {
+	// Google AI (Gemini) implementation
+	return "", fmt.Errorf("Google AI integration not implemented yet")
+}
+
+func (h *Handler) callOllama(model, prompt string) (string, error) {
+	// Local Ollama implementation
+	return "", fmt.Errorf("Ollama integration not implemented yet")
 }
