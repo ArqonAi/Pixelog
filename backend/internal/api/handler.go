@@ -7,13 +7,20 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/ArqonAi/Pixelog/backend/internal/qr"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/makiuchi-d/gozxing"
+	qrReader "github.com/makiuchi-d/gozxing/qrcode"
+	"image/png"
+
 	"github.com/ArqonAi/Pixelog/backend/internal/converter"
 	"github.com/ArqonAi/Pixelog/backend/internal/crypto"
 	"github.com/ArqonAi/Pixelog/backend/internal/search"
@@ -700,7 +707,7 @@ func (h *Handler) LLMChat(c *gin.Context) {
 		return
 	}
 
-	// Extract content from .pixe files
+	// Extract content from .pixe files using QR decoding
 	var extractedContent []string
 	outputDir := h.converter.GetOutputDir()
 	if outputDir == "" {
@@ -722,15 +729,13 @@ func (h *Handler) LLMChat(c *gin.Context) {
 			}
 		}
 
-		// Read file content
-		content, err := os.ReadFile(filePath)
+		// Extract QR-encoded content from .pixe file
+		fileContent, err := h.extractPixeContent(filePath)
 		if err != nil {
-			fmt.Printf("Error reading file %s: %v\n", filePath, err)
+			fmt.Printf("Error extracting content from %s: %v\n", filePath, err)
 			continue
 		}
 
-		// Convert to string and add to extracted content
-		fileContent := string(content)
 		if len(fileContent) > 0 {
 			extractedContent = append(extractedContent, fmt.Sprintf("File %s:\n%s", memoryID, fileContent))
 		}
@@ -1306,4 +1311,101 @@ func (h *Handler) DownloadFromCloud(c *gin.Context) {
 
 func (h *Handler) DeleteFromCloud(c *gin.Context) {
 	c.JSON(http.StatusNotImplemented, gin.H{"error": "Cloud storage not implemented yet"})
+}
+
+// extractPixeContent extracts the QR-encoded content from a .pixe file
+func (h *Handler) extractPixeContent(filePath string) (string, error) {
+	// Create temporary directory for frames
+	tempDir, err := os.MkdirTemp("", "pixelog-chat-extract-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Extract frames from .pixe video using FFmpeg
+	framePattern := filepath.Join(tempDir, "frame_%05d.png")
+	cmd := exec.Command("ffmpeg", "-i", filePath, "-vf", "fps=1", framePattern)
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to extract frames from .pixe file: %w", err)
+	}
+
+	// Find all extracted frames
+	frameFiles, err := filepath.Glob(filepath.Join(tempDir, "frame_*.png"))
+	if err != nil {
+		return "", fmt.Errorf("failed to find frames: %w", err)
+	}
+
+	if len(frameFiles) == 0 {
+		return "", fmt.Errorf("no frames extracted from .pixe video")
+	}
+
+	// Sort frames by filename to ensure correct order
+	sort.Strings(frameFiles)
+
+	// Decode QR codes from each frame
+	var allChunks []qr.Chunk
+	for _, frameFile := range frameFiles {
+		chunk, err := h.decodeQRFromFrame(frameFile)
+		if err != nil {
+			// Skip frames that don't contain valid QR codes
+			continue  
+		}
+		allChunks = append(allChunks, *chunk)
+	}
+
+	if len(allChunks) == 0 {
+		return "", fmt.Errorf("no valid QR codes found in .pixe frames")
+	}
+
+	// Sort chunks by index to ensure correct reassembly
+	sort.Slice(allChunks, func(i, j int) bool {
+		return allChunks[i].Index < allChunks[j].Index
+	})
+
+	// Reassemble all content from chunks
+	var reassembledContent strings.Builder
+	for _, chunk := range allChunks {
+		reassembledContent.WriteString(chunk.Data)
+	}
+
+	return reassembledContent.String(), nil
+}
+
+// decodeQRFromFrame decodes a QR code from a PNG frame image
+func (h *Handler) decodeQRFromFrame(framePath string) (*qr.Chunk, error) {
+	// Open image file
+	file, err := os.Open(framePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open frame image: %w", err)
+	}
+	defer file.Close()
+
+	// Decode PNG image
+	img, err := png.Decode(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode PNG image: %w", err)
+	}
+
+	// Create bitmap source from image
+	bmp, err := gozxing.NewBinaryBitmapFromImage(img)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create bitmap: %w", err)
+	}
+
+	// Create QR code reader
+	qrReader := qrReader.NewQRCodeReader()
+
+	// Decode QR code
+	result, err := qrReader.Decode(bmp, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode QR code: %w", err)
+	}
+
+	// Parse JSON data from QR code
+	var chunk qr.Chunk
+	if err := json.Unmarshal([]byte(result.GetText()), &chunk); err != nil {
+		return nil, fmt.Errorf("failed to parse chunk JSON: %w", err)
+	}
+
+	return &chunk, nil
 }
