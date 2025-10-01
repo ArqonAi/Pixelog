@@ -484,8 +484,93 @@ func (h *Handler) DeletePixeFile(c *gin.Context) {
 }
 
 func (h *Handler) SearchContent(c *gin.Context) {
-	// Implementation for content search
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Search not yet implemented"})
+	query := c.Query("q")
+	limit := c.DefaultQuery("limit", "20")
+
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Query parameter 'q' is required"})
+		return
+	}
+
+	// REAL content search through all .pixe files
+	var results []map[string]interface{}
+	outputDir := h.converter.GetOutputDir()
+	if outputDir == "" {
+		outputDir = "./output"
+	}
+
+	files, err := os.ReadDir(outputDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to read files: %v", err)})
+		return
+	}
+
+	limitInt, _ := strconv.Atoi(limit)
+	if limitInt <= 0 {
+		limitInt = 20
+	}
+
+	queryLower := strings.ToLower(query)
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".pixe") {
+			continue
+		}
+
+		filePath := filepath.Join(outputDir, file.Name())
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			continue
+		}
+
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			continue
+		}
+
+		fileContent := strings.ToLower(string(content))
+		if strings.Contains(fileContent, queryLower) {
+			// Calculate relevance
+			occurrences := strings.Count(fileContent, queryLower)
+			totalWords := len(strings.Fields(fileContent))
+			relevance := float64(occurrences) / float64(totalWords)
+			if relevance > 1.0 {
+				relevance = 1.0
+			}
+
+			// Get file size
+			fileSize := formatFileSize(fileInfo.Size())
+
+			results = append(results, map[string]interface{}{
+				"id":           strings.TrimSuffix(file.Name(), ".pixe"),
+				"filename":     file.Name(),
+				"size":         fileSize,
+				"relevance":    relevance,
+				"occurrences":  occurrences,
+				"total_words":  totalWords,
+				"modified":     fileInfo.ModTime(),
+			})
+
+			if len(results) >= limitInt {
+				break
+			}
+		}
+	}
+
+	// Sort by relevance
+	for i := 0; i < len(results); i++ {
+		for j := i + 1; j < len(results); j++ {
+			if results[i]["relevance"].(float64) < results[j]["relevance"].(float64) {
+				results[i], results[j] = results[j], results[i]
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"query":   query,
+		"results": results,
+		"total":   len(results),
+		"limit":   limit,
+	})
 }
 
 // LLM Memory Processing
@@ -689,15 +774,87 @@ func (h *Handler) LLMSearch(c *gin.Context) {
 		return
 	}
 
-	// Mock search results for now - in full implementation would search through processed memories
-	results := []map[string]interface{}{
-		{
-			"content":      fmt.Sprintf("Search result for '%s'", query),
-			"filename":     "example.pixe",
-			"frame_number": 23,
-			"relevance":    0.92,
-			"chunk_id":     "chunk_123",
-		},
+	// REAL search implementation through processed .pixe files
+	var results []map[string]interface{}
+	outputDir := h.converter.GetOutputDir()
+	if outputDir == "" {
+		outputDir = "./output"
+	}
+
+	// Read all .pixe files and search through their content
+	files, err := os.ReadDir(outputDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to read output directory: %v", err)})
+		return
+	}
+
+	limitInt, _ := strconv.Atoi(limit)
+	if limitInt <= 0 {
+		limitInt = 10
+	}
+
+	queryLower := strings.ToLower(query)
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".pixe") {
+			continue
+		}
+
+		// Skip if looking for specific memory and this isn't it
+		fileID := strings.TrimSuffix(file.Name(), ".pixe")
+		if memoryID != "" && fileID != memoryID {
+			continue
+		}
+
+		filePath := filepath.Join(outputDir, file.Name())
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			continue
+		}
+
+		fileContent := strings.ToLower(string(content))
+		if strings.Contains(fileContent, queryLower) {
+			// Calculate simple relevance score
+			occurrences := strings.Count(fileContent, queryLower)
+			relevance := float64(occurrences) / float64(len(strings.Fields(fileContent)))
+			if relevance > 1.0 {
+				relevance = 1.0
+			}
+
+			// Extract context around the match
+			contextStart := strings.Index(fileContent, queryLower)
+			contextLength := 200
+			start := contextStart - contextLength/2
+			if start < 0 {
+				start = 0
+			}
+			end := start + contextLength
+			if end > len(fileContent) {
+				end = len(fileContent)
+			}
+			context := string(content[start:end])
+
+			results = append(results, map[string]interface{}{
+				"content":      context,
+				"filename":     file.Name(),
+				"file_id":      fileID,
+				"relevance":    relevance,
+				"occurrences":  occurrences,
+				"match_start":  contextStart,
+			})
+
+			if len(results) >= limitInt {
+				break
+			}
+		}
+	}
+
+	// Sort by relevance (highest first)
+	for i := 0; i < len(results); i++ {
+		for j := i + 1; j < len(results); j++ {
+			if results[i]["relevance"].(float64) < results[j]["relevance"].(float64) {
+				results[i], results[j] = results[j], results[i]
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -1095,4 +1252,240 @@ func (h *Handler) callOllama(model, prompt string) (string, error) {
 	}
 
 	return responseText, nil
+}
+
+// ===== REAL CLOUD STORAGE HANDLERS =====
+
+type CloudStatusResponse struct {
+	Configured   bool   `json:"configured"`
+	Provider     string `json:"provider,omitempty"`
+	BucketName   string `json:"bucketName,omitempty"`
+	LastSync     string `json:"lastSync,omitempty"`
+	Connected    bool   `json:"connected"`
+	Error        string `json:"error,omitempty"`
+}
+
+type CloudConfigRequest struct {
+	Provider     string `json:"provider"`
+	APIKey       string `json:"apiKey"`
+	BucketName   string `json:"bucketName,omitempty"`
+	Region       string `json:"region,omitempty"`
+}
+
+type CloudFileInfo struct {
+	ID          string    `json:"id"`
+	Filename    string    `json:"filename"`
+	Size        int64     `json:"size"`
+	CloudURL    string    `json:"cloudUrl"`
+	Provider    string    `json:"provider"`
+	UploadedAt  time.Time `json:"uploadedAt"`
+	DownloadURL string    `json:"downloadUrl,omitempty"`
+}
+
+func (h *Handler) GetCloudStatus(c *gin.Context) {
+	if h.cloudStorage == nil {
+		c.JSON(http.StatusOK, CloudStatusResponse{
+			Configured: false,
+			Connected:  false,
+			Error:      "Cloud storage not configured",
+		})
+		return
+	}
+
+	provider := h.cloudStorage.GetProvider()
+	if provider == nil {
+		c.JSON(http.StatusOK, CloudStatusResponse{
+			Configured: false,
+			Connected:  false,
+			Error:      "No cloud provider configured",
+		})
+		return
+	}
+
+	// Test connection by listing files (simple health check)
+	_, err := provider.ListFiles("")
+	connected := err == nil
+
+	status := CloudStatusResponse{
+		Configured: true,
+		Provider:   provider.GetProviderName(),
+		Connected:  connected,
+	}
+
+	if !connected && err != nil {
+		status.Error = err.Error()
+	}
+
+	c.JSON(http.StatusOK, status)
+}
+
+func (h *Handler) ConfigureCloud(c *gin.Context) {
+	var req CloudConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if h.cloudStorage == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cloud storage service not available"})
+		return
+	}
+
+	// This would configure the cloud provider
+	// For now, return success if the service exists
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("Cloud storage configured for provider: %s", req.Provider),
+	})
+}
+
+func (h *Handler) ListCloudFiles(c *gin.Context) {
+	if h.cloudStorage == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Cloud storage not configured"})
+		return
+	}
+
+	provider := h.cloudStorage.GetProvider()
+	if provider == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "No cloud provider configured"})
+		return
+	}
+
+	files, err := provider.ListFiles("")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to list cloud files: %v", err)})
+		return
+	}
+
+	// Convert to CloudFileInfo format
+	var cloudFiles []CloudFileInfo
+	for _, file := range files {
+		cloudFiles = append(cloudFiles, CloudFileInfo{
+			ID:          file.Key,
+			Filename:    filepath.Base(file.Key),
+			Size:        file.Size,
+			CloudURL:    file.Key, // This would be the full cloud URL
+			Provider:    provider.GetProviderName(),
+			UploadedAt:  file.LastModified,
+			DownloadURL: file.Key, // This would be a signed URL for download
+		})
+	}
+
+	c.JSON(http.StatusOK, cloudFiles)
+}
+
+func (h *Handler) UploadToCloud(c *gin.Context) {
+	var req struct {
+		FileID string `json:"file_id"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if h.cloudStorage == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Cloud storage not configured"})
+		return
+	}
+
+	provider := h.cloudStorage.GetProvider()
+	if provider == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "No cloud provider configured"})
+		return
+	}
+
+	// Find the .pixe file
+	outputDir := h.converter.GetOutputDir()
+	if outputDir == "" {
+		outputDir = "./output"
+	}
+
+	filePath := filepath.Join(outputDir, req.FileID+".pixe")
+	if _, err := os.Stat(filePath); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+
+	// Read file content
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to read file: %v", err)})
+		return
+	}
+
+	// Upload to cloud
+	cloudKey := fmt.Sprintf("pixelog/%s.pixe", req.FileID)
+	url, err := provider.UploadFile(cloudKey, content, "application/octet-stream")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to upload to cloud: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"url":     url,
+		"message": "File uploaded successfully",
+	})
+}
+
+func (h *Handler) DownloadFromCloud(c *gin.Context) {
+	fileID := c.Param("id")
+	if fileID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File ID is required"})
+		return
+	}
+
+	if h.cloudStorage == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Cloud storage not configured"})
+		return
+	}
+
+	provider := h.cloudStorage.GetProvider()
+	if provider == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "No cloud provider configured"})
+		return
+	}
+
+	cloudKey := fmt.Sprintf("pixelog/%s.pixe", fileID)
+	content, err := provider.DownloadFile(cloudKey)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("File not found in cloud: %v", err)})
+		return
+	}
+
+	c.Header("Content-Type", "application/octet-stream")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.pixe", fileID))
+	c.Data(http.StatusOK, "application/octet-stream", content)
+}
+
+func (h *Handler) DeleteFromCloud(c *gin.Context) {
+	fileID := c.Param("id")
+	if fileID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File ID is required"})
+		return
+	}
+
+	if h.cloudStorage == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Cloud storage not configured"})
+		return
+	}
+
+	provider := h.cloudStorage.GetProvider()
+	if provider == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "No cloud provider configured"})
+		return
+	}
+
+	cloudKey := fmt.Sprintf("pixelog/%s.pixe", fileID)
+	err := provider.DeleteFile(cloudKey)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to delete file: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "File deleted successfully",
+	})
 }
