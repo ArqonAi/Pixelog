@@ -51,6 +51,8 @@ const LLMPage: React.FC = () => {
   })
   const [showApiKey, setShowApiKey] = useState<boolean>(false)
   const [showSettings, setShowSettings] = useState<boolean>(false)
+  const [showExportModal, setShowExportModal] = useState<boolean>(false)
+  const [exportEncryptionKey, setExportEncryptionKey] = useState<string>('')
 
   // AI Provider configurations - REAL VERIFIED WORKING MODELS
   const aiProviders = {
@@ -155,12 +157,15 @@ const LLMPage: React.FC = () => {
     })
   }
 
-  const exportChatAsPixe = async () => {
+  const exportChatAsPixe = () => {
     if (chatMessages.length === 0) {
       alert('No chat messages to export')
       return
     }
+    setShowExportModal(true)
+  }
 
+  const createPixeFile = async () => {
     try {
       // Format chat messages as structured content
       const chatContent = chatMessages.map((msg, index) => {
@@ -172,33 +177,40 @@ const LLMPage: React.FC = () => {
       // Add metadata header
       const fullContent = `# Pixelog Chat Session Export\nExported: ${new Date().toISOString()}\nProvider: ${selectedProvider}\nModel: ${selectedModel}\nMemories Connected: ${connectedMemories.size}\n\n---\n\n${chatContent}`
 
-      // Create a real text file and send to REAL conversion system
+      // Create chat file for conversion
       const chatBlob = new Blob([fullContent], { type: 'text/plain' })
       const chatFile = new File([chatBlob], `chat-session-${Date.now()}.txt`, { type: 'text/plain' })
 
-      // Use REAL backend conversion API
+      // Prepare form data with optional encryption
       const formData = new FormData()
       formData.append('files', chatFile)
+      if (exportEncryptionKey.trim()) {
+        formData.append('encryption_key', exportEncryptionKey)
+      }
 
-      console.log('Sending to real conversion API...')
+      console.log('Creating .pixe file...')
       const response = await fetch('http://localhost:8080/api/convert', {
         method: 'POST',
         body: formData
       })
 
       const result = await response.json()
-      console.log('Conversion result:', result)
       
       if (response.ok) {
-        alert(`Chat conversion started! Job ID: ${result.job_id}. Check the Create page to download the .pixe file once conversion completes.`)
+        // Close modal and reset
+        setShowExportModal(false)
+        setExportEncryptionKey('')
+        
+        // Show success message
+        alert(`Chat exported successfully! Job ID: ${result.job_id}. The .pixe file will appear in your Create page once conversion completes.`)
       } else {
         throw new Error(`Conversion failed: ${result.error || 'Unknown error'}`)
       }
       
     } catch (error) {
-      console.error('Error exporting chat:', error)
+      console.error('Error creating .pixe file:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      alert(`Error exporting chat: ${errorMessage}`)
+      alert(`Error creating .pixe file: ${errorMessage}`)
     }
   }
 
@@ -722,6 +734,63 @@ const LLMPage: React.FC = () => {
         )}
 
       </main>
+
+      {/* Export Chat Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="cyber-bg-panel border border-cyan-500/30 rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <h3 className="text-xl font-bold cyber-text-primary mb-6 flex items-center gap-2">
+              <Download className="w-5 h-5" />
+              Export Chat as .pixe File
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm cyber-text-secondary mb-2">
+                  Encryption Key (Optional)
+                </label>
+                <input
+                  type="password"
+                  value={exportEncryptionKey}
+                  onChange={(e) => setExportEncryptionKey(e.target.value)}
+                  placeholder="Leave empty for no encryption"
+                  className="w-full px-3 py-2 cyber-input"
+                />
+                <p className="text-xs cyber-text-muted mt-1">
+                  If provided, the .pixe file will be encrypted with this key
+                </p>
+              </div>
+              
+              <div className="text-sm cyber-text-secondary">
+                <p><strong>Chat Summary:</strong></p>
+                <p>• {chatMessages.length} messages</p>
+                <p>• Provider: {selectedProvider}</p>
+                <p>• Model: {selectedModel}</p>
+                <p>• Connected memories: {connectedMemories.size}</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowExportModal(false)
+                  setExportEncryptionKey('')
+                }}
+                className="flex-1 px-4 py-2 cyber-btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createPixeFile}
+                className="flex-1 px-4 py-2 cyber-btn-primary flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Create .pixe File
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
