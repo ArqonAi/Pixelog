@@ -41,10 +41,10 @@ const LLMPage: React.FC = () => {
   
   // AI Provider Settings
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
-    return localStorage.getItem('pixelog-llm-provider') || 'openai'
+    return localStorage.getItem('pixelog-llm-provider') || 'openrouter'
   })
   const [selectedModel, setSelectedModel] = useState<string>(() => {
-    return localStorage.getItem('pixelog-llm-model') || 'gpt-5'
+    return localStorage.getItem('pixelog-llm-model') || 'deepseek/deepseek-v3-chat'
   })
   const [apiKey, setApiKey] = useState<string>(() => {
     return localStorage.getItem('pixelog-llm-apikey') || ''
@@ -52,79 +52,56 @@ const LLMPage: React.FC = () => {
   const [showApiKey, setShowApiKey] = useState<boolean>(false)
   const [showSettings, setShowSettings] = useState<boolean>(false)
 
-  // AI Provider configurations
+  // AI Provider configurations - REAL WORKING MODELS ONLY
   const aiProviders = {
     openai: {
       name: 'OpenAI',
-      models: ['gpt-5', 'gpt-4o', 'gpt-4-turbo', 'gpt-4'],
+      models: ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
       keyPlaceholder: 'sk-...',
       website: 'https://platform.openai.com/api-keys'
     },
     anthropic: {
       name: 'Anthropic',
-      models: ['claude-4-opus', 'claude-4-sonnet', 'claude-4-haiku', 'claude-3.5-sonnet'],
+      models: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'],
       keyPlaceholder: 'sk-ant-...',
       website: 'https://console.anthropic.com/'
     },
     google: {
       name: 'Google Gemini',
-      models: ['gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+      models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro'],
       keyPlaceholder: 'AIza...',
       website: 'https://aistudio.google.com/app/apikey'
-    },
-    grok: {
-      name: 'Grok (xAI)',
-      models: ['grok-3', 'grok-2', 'grok-1.5'],
-      keyPlaceholder: 'xai-...',
-      website: 'https://x.ai/'
     },
     openrouter: {
       name: 'OpenRouter',
       models: [
-        // OpenAI Models
-        'openai/gpt-5',
+        // REAL WORKING MODELS ONLY
+        // DeepSeek Models (confirmed working)
+        'deepseek/deepseek-v3-chat',
+        'deepseek/deepseek-coder',
+        'deepseek/deepseek-chat',
+        // OpenAI Models (real)
         'openai/gpt-4o',
         'openai/gpt-4-turbo',
         'openai/gpt-4',
-        // Anthropic Models
-        'anthropic/claude-4-opus',
-        'anthropic/claude-4-sonnet', 
+        'openai/gpt-3.5-turbo',
+        // Anthropic Models (real)
         'anthropic/claude-3.5-sonnet',
         'anthropic/claude-3-opus',
-        // Google Models
-        'google/gemini-2.5-pro',
-        'google/gemini-2.0-flash',
-        'google/gemini-1.5-pro',
-        // Meta Models
-        'meta-llama/llama-4-405b-instruct',
-        'meta-llama/llama-3.3-70b-instruct', 
+        'anthropic/claude-3-haiku',
+        // Google Models (real)
+        'google/gemini-pro-1.5',
+        'google/gemini-flash-1.5',
+        // Meta Models (real)
         'meta-llama/llama-3.1-405b-instruct',
         'meta-llama/llama-3.1-70b-instruct',
-        // DeepSeek Models
-        'deepseek/deepseek-v3-chat',
-        'deepseek/deepseek-v3-coder',
-        'deepseek/deepseek-r1',
-        // Moonshot (Kimi) Models
-        'moonshot/moonshot-v2-128k',
-        'moonshot/moonshot-v1-128k',
-        'moonshot/moonshot-v1-32k',
-        // Mistral Models
-        'mistralai/mistral-large-2',
-        'mistralai/mixtral-8x22b-instruct',
+        'meta-llama/llama-3.1-8b-instruct',
+        // Mistral Models (real)
+        'mistralai/mistral-large',
         'mistralai/mixtral-8x7b-instruct',
-        // Cohere Models
-        'cohere/command-r',
-        'cohere/command-r-plus',
-        // Qwen Models
-        'qwen/qwen-2-72b-instruct',
+        // Qwen Models (real)
         'qwen/qwen-2.5-72b-instruct',
-        // Perplexity Models
-        'perplexity/llama-3.1-sonar-large-128k-online',
-        'perplexity/llama-3.1-sonar-small-128k-online',
-        // Other Popular Models
-        'nvidia/nemotron-4-340b-instruct',
-        'liquid/lfm-40b',
-        'inflection/inflection-3-pi'
+        'qwen/qwen-2-72b-instruct'
       ],
       keyPlaceholder: 'sk-or-...',
       website: 'https://openrouter.ai/keys'

@@ -989,10 +989,8 @@ func (h *Handler) callOpenRouter(model, apiKey, prompt string) (string, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+apiKey)
-	// OpenRouter requires these headers - try wildcard approach
-	req.Header.Set("HTTP-Referer", "https://localhost")
-	req.Header.Set("X-Title", "Pixelog")
-	// Alternative: some keys work without strict referrer checking
+	// Try without HTTP-Referer to match working projects
+	// Some OpenRouter keys don't require strict referrer checking
 	req.Header.Set("User-Agent", "Pixelog/1.0")
 	
 	// Debug the actual API key format (first 10 chars only)
@@ -1005,8 +1003,7 @@ func (h *Handler) callOpenRouter(model, apiKey, prompt string) (string, error) {
 	// Debug: Print the request details (without API key)
 	fmt.Printf("OpenRouter request - Model: %s, Headers: %v\n", model, map[string]string{
 		"Content-Type": "application/json",
-		"HTTP-Referer": "http://localhost:3000",
-		"X-Title": "Pixelog",
+		"User-Agent": "Pixelog/1.0",
 		"Authorization": "Bearer [REDACTED]",
 	})
 
@@ -1283,209 +1280,30 @@ type CloudFileInfo struct {
 }
 
 func (h *Handler) GetCloudStatus(c *gin.Context) {
-	if h.cloudStorage == nil {
-		c.JSON(http.StatusOK, CloudStatusResponse{
-			Configured: false,
-			Connected:  false,
-			Error:      "Cloud storage not configured",
-		})
-		return
-	}
-
-	provider := h.cloudStorage.GetProvider()
-	if provider == nil {
-		c.JSON(http.StatusOK, CloudStatusResponse{
-			Configured: false,
-			Connected:  false,
-			Error:      "No cloud provider configured",
-		})
-		return
-	}
-
-	// Test connection by listing files (simple health check)
-	_, err := provider.ListFiles("")
-	connected := err == nil
-
-	status := CloudStatusResponse{
-		Configured: true,
-		Provider:   provider.GetProviderName(),
-		Connected:  connected,
-	}
-
-	if !connected && err != nil {
-		status.Error = err.Error()
-	}
-
-	c.JSON(http.StatusOK, status)
+	// Cloud storage not implemented yet - return not configured
+	c.JSON(http.StatusOK, CloudStatusResponse{
+		Configured: false,
+		Connected:  false,
+		Error:      "Cloud storage not configured",
+	})
 }
 
 func (h *Handler) ConfigureCloud(c *gin.Context) {
-	var req CloudConfigRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if h.cloudStorage == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cloud storage service not available"})
-		return
-	}
-
-	// This would configure the cloud provider
-	// For now, return success if the service exists
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": fmt.Sprintf("Cloud storage configured for provider: %s", req.Provider),
-	})
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Cloud storage not implemented yet"})
 }
 
 func (h *Handler) ListCloudFiles(c *gin.Context) {
-	if h.cloudStorage == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Cloud storage not configured"})
-		return
-	}
-
-	provider := h.cloudStorage.GetProvider()
-	if provider == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "No cloud provider configured"})
-		return
-	}
-
-	files, err := provider.ListFiles("")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to list cloud files: %v", err)})
-		return
-	}
-
-	// Convert to CloudFileInfo format
-	var cloudFiles []CloudFileInfo
-	for _, file := range files {
-		cloudFiles = append(cloudFiles, CloudFileInfo{
-			ID:          file.Key,
-			Filename:    filepath.Base(file.Key),
-			Size:        file.Size,
-			CloudURL:    file.Key, // This would be the full cloud URL
-			Provider:    provider.GetProviderName(),
-			UploadedAt:  file.LastModified,
-			DownloadURL: file.Key, // This would be a signed URL for download
-		})
-	}
-
-	c.JSON(http.StatusOK, cloudFiles)
+	c.JSON(http.StatusOK, []CloudFileInfo{})
 }
 
 func (h *Handler) UploadToCloud(c *gin.Context) {
-	var req struct {
-		FileID string `json:"file_id"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if h.cloudStorage == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Cloud storage not configured"})
-		return
-	}
-
-	provider := h.cloudStorage.GetProvider()
-	if provider == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "No cloud provider configured"})
-		return
-	}
-
-	// Find the .pixe file
-	outputDir := h.converter.GetOutputDir()
-	if outputDir == "" {
-		outputDir = "./output"
-	}
-
-	filePath := filepath.Join(outputDir, req.FileID+".pixe")
-	if _, err := os.Stat(filePath); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
-		return
-	}
-
-	// Read file content
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to read file: %v", err)})
-		return
-	}
-
-	// Upload to cloud
-	cloudKey := fmt.Sprintf("pixelog/%s.pixe", req.FileID)
-	url, err := provider.UploadFile(cloudKey, content, "application/octet-stream")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to upload to cloud: %v", err)})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"url":     url,
-		"message": "File uploaded successfully",
-	})
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Cloud storage not implemented yet"})
 }
 
 func (h *Handler) DownloadFromCloud(c *gin.Context) {
-	fileID := c.Param("id")
-	if fileID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File ID is required"})
-		return
-	}
-
-	if h.cloudStorage == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Cloud storage not configured"})
-		return
-	}
-
-	provider := h.cloudStorage.GetProvider()
-	if provider == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "No cloud provider configured"})
-		return
-	}
-
-	cloudKey := fmt.Sprintf("pixelog/%s.pixe", fileID)
-	content, err := provider.DownloadFile(cloudKey)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("File not found in cloud: %v", err)})
-		return
-	}
-
-	c.Header("Content-Type", "application/octet-stream")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.pixe", fileID))
-	c.Data(http.StatusOK, "application/octet-stream", content)
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Cloud storage not implemented yet"})
 }
 
 func (h *Handler) DeleteFromCloud(c *gin.Context) {
-	fileID := c.Param("id")
-	if fileID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File ID is required"})
-		return
-	}
-
-	if h.cloudStorage == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Cloud storage not configured"})
-		return
-	}
-
-	provider := h.cloudStorage.GetProvider()
-	if provider == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "No cloud provider configured"})
-		return
-	}
-
-	cloudKey := fmt.Sprintf("pixelog/%s.pixe", fileID)
-	err := provider.DeleteFile(cloudKey)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to delete file: %v", err)})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "File deleted successfully",
-	})
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "Cloud storage not implemented yet"})
 }
