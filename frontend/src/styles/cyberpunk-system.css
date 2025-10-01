@@ -29,7 +29,7 @@
   --elevated: #222222;
   
   /* Text Hierarchy */
-  --text-primary: #ffffff;
+  --text-primary: #e0e0e0;       /* Changed from white to light gray */
   --text-secondary: #b0b0b0;
   --text-tertiary: #808080;
   --text-disabled: #404040;
@@ -285,11 +285,12 @@ body {
 /* Input Fields */
 .cyber-input {
   background: var(--panel);
-  border: 2px solid rgba(0, 255, 65, 0.3);
+  border: 2px solid rgba(0, 212, 255, 0.3);
   color: var(--text-primary);
   padding: var(--space-3) var(--space-4);
-  font-family: var(--font-mono);
   border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
   transition: all 0.3s var(--ease-cyber);
 }
 

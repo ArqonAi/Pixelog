@@ -248,7 +248,7 @@ const LLMPage: React.FC = () => {
             rel="noopener noreferrer"
             className="cyber-text-secondary hover:cyber-text-primary transition-colors flex items-center gap-2"
           >
-            <span>SQLite-meets-YouTube for AI memories</span>
+            <span>Offline context storage for AI memories</span>
           </a>
           <span className="cyber-text-tertiary">•</span>
           <a 
