@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Upload, RefreshCw, Trash2 } from 'lucide-react'
 import DropZone from '../components/DropZone'
 import Toast from '../components/Toast'
+import CloudStorage from '../components/CloudStorage'
 import { pixelogApi } from '../services/api'
 
 // Type definitions
@@ -268,6 +269,16 @@ const CreatePage: React.FC = () => {
               </div>
             </motion.div>
           )}
+          
+          {/* Cloud Storage Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="mt-8"
+          >
+            <CloudStorage />
+          </motion.div>
         </div>
       </div>
 
