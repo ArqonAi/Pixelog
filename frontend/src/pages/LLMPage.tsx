@@ -239,8 +239,28 @@ const LLMPage: React.FC = () => {
   }
   return (
     <div className="min-h-screen cyber-bg-void">
+      {/* Pixelog Description */}
+      <div className="text-center py-6 border-b border-gray-800/30">
+        <div className="flex items-center justify-center gap-8 text-sm">
+          <a 
+            href="https://github.com/ArqonAi/Pixelog" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="cyber-text-secondary hover:cyber-text-primary transition-colors flex items-center gap-2"
+          >
+            <span>SQLite-meets-YouTube for AI memories</span>
+          </a>
+          <span className="cyber-text-tertiary">•</span>
+          <a 
+            href="/create" 
+            className="cyber-text-secondary hover:cyber-text-primary transition-colors flex items-center gap-2"
+          >
+            <span>Convert knowledge to portable .pixe files</span>
+          </a>
+        </div>
+      </div>
       
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
+      <main className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Tab Navigation */}
         <div className="flex items-center space-x-1 mb-8 cyber-bg-panel rounded-lg p-1">
           {[
@@ -269,7 +289,7 @@ const LLMPage: React.FC = () => {
 
         {/* Upload Tab */}
         {activeTab === 'upload' && (
-          <div className="space-y-6">
+          <div className="space-y-6 max-w-4xl mx-auto">
             <div className="grid lg:grid-cols-2 gap-6">
               <div className="cyber-terminal">
                 <div className="cyber-terminal-header">
@@ -388,7 +408,7 @@ const LLMPage: React.FC = () => {
 
         {/* Chat Tab */}
         {activeTab === 'chat' && (
-          <div className="cyber-terminal h-[600px] flex flex-col">
+          <div className="cyber-terminal h-[700px] flex flex-col mx-auto max-w-4xl">
             <div className="cyber-terminal-header">
               <div className="flex items-center justify-between w-full">
                 <div>
