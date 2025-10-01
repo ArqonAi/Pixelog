@@ -53,6 +53,7 @@ const LLMPage: React.FC = () => {
   const [showSettings, setShowSettings] = useState<boolean>(false)
   const [showExportModal, setShowExportModal] = useState<boolean>(false)
   const [exportEncryptionKey, setExportEncryptionKey] = useState<string>('')
+  const [isExporting, setIsExporting] = useState<boolean>(false)
 
   // AI Provider configurations - REAL VERIFIED WORKING MODELS
   const aiProviders = {
@@ -166,6 +167,8 @@ const LLMPage: React.FC = () => {
   }
 
   const createPixeFile = async () => {
+    setIsExporting(true)
+    
     try {
       // Format chat messages as structured content
       const chatContent = chatMessages.map((msg, index) => {
@@ -188,29 +191,74 @@ const LLMPage: React.FC = () => {
         formData.append('encryption_key', exportEncryptionKey)
       }
 
-      console.log('Creating .pixe file...')
-      const response = await fetch('http://localhost:8080/api/convert', {
+      console.log('Starting .pixe conversion...')
+      const convertResponse = await fetch('http://localhost:8080/api/convert', {
         method: 'POST',
         body: formData
       })
 
-      const result = await response.json()
+      const convertResult = await convertResponse.json()
       
-      if (response.ok) {
-        // Close modal and reset
-        setShowExportModal(false)
-        setExportEncryptionKey('')
-        
-        // Show success message
-        alert(`Chat exported successfully! Job ID: ${result.job_id}. The .pixe file will appear in your Create page once conversion completes.`)
-      } else {
-        throw new Error(`Conversion failed: ${result.error || 'Unknown error'}`)
+      if (!convertResponse.ok) {
+        throw new Error(`Conversion failed: ${convertResult.error || 'Unknown error'}`)
       }
+
+      const jobId = convertResult.job_id
+      console.log('Conversion started, job ID:', jobId)
+
+      // Poll for completion
+      let attempts = 0
+      const maxAttempts = 30 // 30 seconds timeout
+      
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
+        
+        const statusResponse = await fetch(`http://localhost:8080/api/status/${jobId}`)
+        const statusResult = await statusResponse.json()
+        
+        console.log('Job status:', statusResult)
+        
+        if (statusResult.status === 'completed') {
+          // Download the file
+          const downloadResponse = await fetch(`http://localhost:8080/api/files/${jobId}`)
+          
+          if (!downloadResponse.ok) {
+            throw new Error('Failed to download the .pixe file')
+          }
+          
+          const blob = await downloadResponse.blob()
+          const url = URL.createObjectURL(blob)
+          
+          // Create download link
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `chat-session-${new Date().toISOString().split('T')[0]}.pixe`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+          
+          // Close modal and reset
+          setShowExportModal(false)
+          setExportEncryptionKey('')
+          setIsExporting(false)
+          
+          alert('Chat exported successfully and downloaded!')
+          return
+        } else if (statusResult.status === 'failed') {
+          throw new Error(`Conversion failed: ${statusResult.error || 'Unknown error'}`)
+        }
+        
+        attempts++
+      }
+      
+      throw new Error('Conversion timed out. Please try again.')
       
     } catch (error) {
       console.error('Error creating .pixe file:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       alert(`Error creating .pixe file: ${errorMessage}`)
+      setIsExporting(false)
     }
   }
 
@@ -775,17 +823,29 @@ const LLMPage: React.FC = () => {
                 onClick={() => {
                   setShowExportModal(false)
                   setExportEncryptionKey('')
+                  setIsExporting(false)
                 }}
-                className="flex-1 px-4 py-2 cyber-btn-secondary"
+                disabled={isExporting}
+                className="flex-1 px-4 py-2 cyber-btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 onClick={createPixeFile}
-                className="flex-1 px-4 py-2 cyber-btn-primary flex items-center justify-center gap-2"
+                disabled={isExporting}
+                className="flex-1 px-4 py-2 cyber-btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Download className="w-4 h-4" />
-                Create .pixe File
+                {isExporting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    Create .pixe File
+                  </>
+                )}
               </button>
             </div>
           </div>
