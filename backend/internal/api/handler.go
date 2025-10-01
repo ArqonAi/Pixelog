@@ -525,13 +525,32 @@ func (h *Handler) ProcessLLMMemories(c *gin.Context) {
 	}
 
 	for i, fileID := range req.FileIDs {
-		filePath := filepath.Join(outputDir, fileID+".pixe")
+		var filePath string
+		var fileInfo os.FileInfo
+		var err error
 		
-		// Check if file exists
-		fileInfo, err := os.Stat(filePath)
+		// Try converter output directory first
+		filePath = filepath.Join(outputDir, fileID+".pixe")
+		fileInfo, err = os.Stat(filePath)
+		
+		// If not found, try relative ./output directory
 		if err != nil {
+			filePath = filepath.Join("./output", fileID+".pixe")
+			fileInfo, err = os.Stat(filePath)
+		}
+		
+		// If still not found, try absolute output path
+		if err != nil {
+			filePath = filepath.Join("output", fileID+".pixe")
+			fileInfo, err = os.Stat(filePath)
+		}
+		
+		if err != nil {
+			fmt.Printf("File %s not found in any location\n", fileID)
 			continue // Skip non-existent files
 		}
+		
+		fmt.Printf("Found file at: %s\n", filePath)
 
 		// Extract content from .pixe file using converter
 		chunks := int(fileInfo.Size() / 2800) // Estimate chunks based on file size

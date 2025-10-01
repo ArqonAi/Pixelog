@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Brain, ArrowLeft, Upload, MessageSquare, Settings, Key, Eye, EyeOff, Send, FileText, Bot, Sliders } from 'lucide-react'
+import { Brain, ArrowLeft, Upload, MessageSquare, Settings, Key, Eye, EyeOff, Send, FileText, Bot, Sliders, Zap, Trash2, Power, PowerOff } from 'lucide-react'
 
 interface ProcessedMemory {
   id: string
@@ -31,6 +31,7 @@ const LLMPage: React.FC = () => {
     const saved = localStorage.getItem('pixelog-llm-memories')
     return saved ? JSON.parse(saved) : []
   })
+  const [connectedMemories, setConnectedMemories] = useState<Set<string>>(new Set())
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
     const saved = localStorage.getItem('pixelog-llm-chat')
     return saved ? JSON.parse(saved) : []
@@ -152,9 +153,25 @@ const LLMPage: React.FC = () => {
     localStorage.setItem('pixelog-llm-apikey', apiKey)
   }, [apiKey])
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || [])
-    setFiles(selectedFiles)
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files
+    if (selectedFiles) {
+      setFiles(Array.from(selectedFiles).filter(file => 
+        file.name.endsWith('.pixe') || file.type === 'video/mp4'
+      ))
+    }
+  }
+
+  const toggleMemoryConnection = (memoryId: string) => {
+    setConnectedMemories(prev => {
+      const newConnected = new Set(prev)
+      if (newConnected.has(memoryId)) {
+        newConnected.delete(memoryId)
+      } else {
+        newConnected.add(memoryId)
+      }
+      return newConnected
+    })
   }
 
   const processFiles = async () => {
@@ -188,7 +205,8 @@ const LLMPage: React.FC = () => {
   }
 
   const sendMessage = async () => {
-    if (!chatInput.trim() || processedMemories.length === 0 || !apiKey.trim()) return
+    const connectedMemoryIds = Array.from(connectedMemories)
+    if (!chatInput.trim() || connectedMemoryIds.length === 0 || !apiKey.trim()) return
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -207,7 +225,7 @@ const LLMPage: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: currentInput,
-          memory_ids: processedMemories.map(m => m.id),
+          memory_ids: connectedMemoryIds,
           provider: selectedProvider,
           model: selectedModel,
           api_key: apiKey
@@ -381,23 +399,51 @@ const LLMPage: React.FC = () => {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {processedMemories.map((memory) => (
+                      {processedMemories.map((memory) => {
+                        const isConnected = connectedMemories.has(memory.id)
+                        return (
                         <div key={memory.id} className="cyber-bg-panel p-4 rounded-lg">
                           <div className="flex items-center justify-between mb-2">
                             <h3 className="cyber-body cyber-text-primary font-medium">{memory.filename}</h3>
-                            {memory.encrypted && (
-                              <span className="cyber-mono text-xs bg-yellow-900/30 text-yellow-400 px-2 py-1 rounded">
-                                ENCRYPTED
-                              </span>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {memory.encrypted && (
+                                <span className="cyber-mono text-xs bg-yellow-900/30 text-yellow-400 px-2 py-1 rounded">
+                                  ENCRYPTED
+                                </span>
+                              )}
+                              <button
+                                onClick={() => toggleMemoryConnection(memory.id)}
+                                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1 ${
+                                  isConnected 
+                                    ? 'bg-green-600/20 text-green-400 border border-green-500/30 hover:bg-green-600/30'
+                                    : 'bg-gray-600/20 text-gray-400 border border-gray-500/30 hover:bg-gray-600/30'
+                                }`}
+                                title={isConnected ? 'Disconnect memory' : 'Connect memory'}
+                              >
+                                {isConnected ? (
+                                  <>
+                                    <Power className="w-3 h-3" />
+                                    Connected
+                                  </>
+                                ) : (
+                                  <>
+                                    <PowerOff className="w-3 h-3" />
+                                    Connect
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           </div>
                           <div className="flex items-center gap-4 cyber-mono text-xs cyber-text-secondary">
                             <span>{memory.chunks.toLocaleString()} chunks</span>
                             <span>{(memory.size / (1024 * 1024)).toFixed(1)}MB</span>
-                            <span className="text-green-400">{memory.status}</span>
+                            <span className={`${
+                              isConnected ? 'text-green-400' : 'text-gray-400'
+                            }`}>{isConnected ? 'Active' : memory.status}</span>
                           </div>
                         </div>
-                      ))}
+                      )})
+                      }
                     </div>
                   )}
                 </div>
@@ -414,7 +460,7 @@ const LLMPage: React.FC = () => {
                 <div>
                   <h2 className="cyber-h2 text-lg">Chat with Your Memories</h2>
                   <div className="flex items-center gap-4 cyber-mono text-xs cyber-text-secondary">
-                    <span>{processedMemories.length} memories loaded</span>
+                    <span>{connectedMemories.size} memories connected</span>
                     <span className="flex items-center gap-1">
                       <Bot className="w-3 h-3" />
                       {aiProviders[selectedProvider as keyof typeof aiProviders]?.name} • {selectedModel}
@@ -523,9 +569,9 @@ const LLMPage: React.FC = () => {
                     <MessageSquare className="w-16 h-16 mx-auto mb-4 cyber-text-tertiary" />
                     <p className="cyber-h3 text-lg mb-2">Start a conversation</p>
                     <p className="cyber-body text-sm">
-                      {processedMemories.length > 0 
-                        ? "Ask questions about your uploaded memories" 
-                        : "Upload memories first to start chatting"}
+                      {connectedMemories.size > 0 
+                        ? "Ask questions about your connected memories" 
+                        : "Connect memories first to start chatting"}
                     </p>
                   </div>
                 ) : (
@@ -580,15 +626,15 @@ const LLMPage: React.FC = () => {
                       onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                       placeholder={
                         !apiKey ? "Enter API key in settings first" :
-                        processedMemories.length === 0 ? "Upload memories first to chat" :
-                        "Ask about your memories..."
+                        connectedMemories.size === 0 ? "Connect memories first to chat" :
+                        "Ask about your connected memories..."
                       }
                       className="cyber-input w-full pr-12 py-3 text-base"
-                      disabled={processedMemories.length === 0 || !apiKey.trim()}
+                      disabled={connectedMemories.size === 0 || !apiKey.trim()}
                     />
                     <button
                       onClick={sendMessage}
-                      disabled={!chatInput.trim() || processedMemories.length === 0 || !apiKey.trim() || isThinking}
+                      disabled={!chatInput.trim() || connectedMemories.size === 0 || !apiKey.trim() || isThinking}
                       className="absolute right-2 top-1/2 -translate-y-1/2 cyber-btn-secondary p-2 rounded-lg flex items-center justify-center disabled:opacity-50"
                     >
                       <Send className="w-4 h-4" />
@@ -600,8 +646,8 @@ const LLMPage: React.FC = () => {
                 <div className="flex items-center justify-between mt-2 cyber-mono text-xs cyber-text-tertiary">
                   <span>
                     {!apiKey ? "⚠️ Configure API key in settings" :
-                     processedMemories.length === 0 ? "Upload .pixe files to start chatting" :
-                     `${processedMemories.length} memories • ${processedMemories.reduce((sum, m) => sum + m.chunks, 0).toLocaleString()} chunks ready`
+                     connectedMemories.size === 0 ? "Connect memories to start chatting" :
+                     `${connectedMemories.size} connected • ${processedMemories.filter(m => connectedMemories.has(m.id)).reduce((sum, m) => sum + m.chunks, 0).toLocaleString()} chunks active`
                     }
                   </span>
                   <span className="flex items-center gap-2">
