@@ -43,7 +43,7 @@ const LLMPage: React.FC = () => {
     return localStorage.getItem('pixelog-llm-provider') || 'openai'
   })
   const [selectedModel, setSelectedModel] = useState<string>(() => {
-    return localStorage.getItem('pixelog-llm-model') || 'gpt-4'
+    return localStorage.getItem('pixelog-llm-model') || 'gpt-5'
   })
   const [apiKey, setApiKey] = useState<string>(() => {
     return localStorage.getItem('pixelog-llm-apikey') || ''
@@ -55,25 +55,25 @@ const LLMPage: React.FC = () => {
   const aiProviders = {
     openai: {
       name: 'OpenAI',
-      models: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+      models: ['gpt-5', 'gpt-4o', 'gpt-4-turbo', 'gpt-4'],
       keyPlaceholder: 'sk-...',
       website: 'https://platform.openai.com/api-keys'
     },
     anthropic: {
       name: 'Anthropic',
-      models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
+      models: ['claude-4-opus', 'claude-4-sonnet', 'claude-4-haiku', 'claude-3.5-sonnet'],
       keyPlaceholder: 'sk-ant-...',
       website: 'https://console.anthropic.com/'
     },
     google: {
       name: 'Google Gemini',
-      models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro'],
+      models: ['gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
       keyPlaceholder: 'AIza...',
       website: 'https://aistudio.google.com/app/apikey'
     },
     grok: {
       name: 'Grok (xAI)',
-      models: ['grok-beta'],
+      models: ['grok-3', 'grok-2', 'grok-1.5'],
       keyPlaceholder: 'xai-...',
       website: 'https://x.ai/'
     },
@@ -81,31 +81,36 @@ const LLMPage: React.FC = () => {
       name: 'OpenRouter',
       models: [
         // OpenAI Models
+        'openai/gpt-5',
+        'openai/gpt-4o',
         'openai/gpt-4-turbo',
         'openai/gpt-4',
-        'openai/gpt-3.5-turbo',
         // Anthropic Models
+        'anthropic/claude-4-opus',
+        'anthropic/claude-4-sonnet', 
+        'anthropic/claude-3.5-sonnet',
         'anthropic/claude-3-opus',
-        'anthropic/claude-3-sonnet',
-        'anthropic/claude-3-haiku',
         // Google Models
-        'google/gemini-pro-1.5',
-        'google/gemini-pro',
+        'google/gemini-2.5-pro',
+        'google/gemini-2.0-flash',
+        'google/gemini-1.5-pro',
         // Meta Models
+        'meta-llama/llama-4-405b-instruct',
+        'meta-llama/llama-3.3-70b-instruct', 
         'meta-llama/llama-3.1-405b-instruct',
         'meta-llama/llama-3.1-70b-instruct',
-        'meta-llama/llama-3-70b-instruct',
         // DeepSeek Models
-        'deepseek/deepseek-chat',
-        'deepseek/deepseek-coder',
+        'deepseek/deepseek-v3-chat',
+        'deepseek/deepseek-v3-coder',
+        'deepseek/deepseek-r1',
         // Moonshot (Kimi) Models
-        'moonshot/moonshot-v1-8k',
-        'moonshot/moonshot-v1-32k',
+        'moonshot/moonshot-v2-128k',
         'moonshot/moonshot-v1-128k',
+        'moonshot/moonshot-v1-32k',
         // Mistral Models
-        'mistralai/mistral-7b-instruct',
-        'mistralai/mixtral-8x7b-instruct',
+        'mistralai/mistral-large-2',
         'mistralai/mixtral-8x22b-instruct',
+        'mistralai/mixtral-8x7b-instruct',
         // Cohere Models
         'cohere/command-r',
         'cohere/command-r-plus',
