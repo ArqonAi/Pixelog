@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Upload, RefreshCw, Trash2 } from 'lucide-react'
+import { ArrowLeft, Upload, RefreshCw, Trash2, Download } from 'lucide-react'
 import DropZone from '../components/DropZone'
 import Toast from '../components/Toast'
 import CloudStorage from '../components/CloudStorage'
@@ -136,16 +136,34 @@ const CreatePage: React.FC = () => {
   // Delete file handler
   const handleDeleteFile = async (fileId: string): Promise<void> => {
     try {
-      const response = await fetch(`http://localhost:8080/api/files/${fileId}`, {
-        method: 'DELETE'
-      })
-      
-      if (!response.ok) throw new Error('Failed to delete file')
-      
+      await pixelogApi.deleteFile(fileId)
+      await fetchFiles() // Refresh the list
       showToast('File deleted successfully', 'success')
-      await refetchFiles()
     } catch (error) {
+      console.error('Failed to delete file:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete file'
+      showToast(errorMessage, 'error')
+    }
+  }
+
+  // Download file handler
+  const handleDownloadFile = async (file: PixelogFile): Promise<void> => {
+    try {
+      // Create download URL
+      const downloadUrl = `http://localhost:8080/api/files/${file.id}/download`
+      
+      // Create temporary link to trigger download
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = file.name
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      showToast(`Downloaded ${file.name}`, 'success')
+    } catch (error) {
+      console.error('Failed to download file:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to download file'
       showToast(errorMessage, 'error')
     }
   }
@@ -219,12 +237,22 @@ const CreatePage: React.FC = () => {
                                 </p>
                               </div>
                             </div>
-                            <button
-                              onClick={() => handleDeleteFile(file.id)}
-                              className="cyber-btn-danger p-2"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleDownloadFile(file)}
+                                className="cyber-btn-secondary p-2"
+                                title="Download file"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteFile(file.id)}
+                                className="cyber-btn-danger p-2"
+                                title="Delete file"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}
