@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Upload, RefreshCw, Trash2, Download } from 'lucide-react'
+import { ArrowLeft, Upload, RefreshCw, Trash2, Download, Brain } from 'lucide-react'
 import DropZone from '../components/DropZone'
 import Toast from '../components/Toast'
 import CloudStorage from '../components/CloudStorage'
@@ -35,6 +35,9 @@ const CreatePage: React.FC = () => {
   const [isConverting, setIsConverting] = useState<boolean>(false)
   const [conversionProgress, setConversionProgress] = useState<ProgressUpdate | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
+  const [showLLMModal, setShowLLMModal] = useState<boolean>(false)
+  const [selectedFileForLLM, setSelectedFileForLLM] = useState<PixelogFile | null>(null)
+  const [encryptionKey, setEncryptionKey] = useState<string>('')
 
   // Fetch files on component mount
   useEffect(() => {
@@ -136,7 +139,7 @@ const CreatePage: React.FC = () => {
   // Delete file handler
   const handleDeleteFile = async (fileId: string): Promise<void> => {
     try {
-      await pixelogApi.deleteFile(fileId)
+      await pixelogApi.deletePixeFile(fileId)
       await fetchFiles() // Refresh the list
       showToast('File deleted successfully', 'success')
     } catch (error) {
@@ -149,21 +152,74 @@ const CreatePage: React.FC = () => {
   // Download file handler
   const handleDownloadFile = async (file: PixelogFile): Promise<void> => {
     try {
-      // Create download URL
-      const downloadUrl = `http://localhost:8080/api/files/${file.id}/download`
+      // Get the file blob from API
+      const blob = await pixelogApi.downloadPixeFile(file.id)
       
-      // Create temporary link to trigger download
+      // Create object URL and download
+      const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
-      link.href = downloadUrl
+      link.href = url
       link.download = file.name
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
       
+      // Cleanup
+      window.URL.revokeObjectURL(url)
+      
       showToast(`Downloaded ${file.name}`, 'success')
     } catch (error) {
       console.error('Failed to download file:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to download file'
+      showToast(errorMessage, 'error')
+    }
+  }
+
+  // Send to LLM handler
+  const handleSendToLLM = (file: PixelogFile): void => {
+    setSelectedFileForLLM(file)
+    setShowLLMModal(true)
+  }
+
+  // Process file for LLM
+  const handleProcessForLLM = async (): Promise<void> => {
+    if (!selectedFileForLLM) return
+    
+    try {
+      // Create form data with the .pixe file
+      const formData = new FormData()
+      
+      // Get the actual file blob first
+      const blob = await pixelogApi.downloadPixeFile(selectedFileForLLM.id)
+      const file = new File([blob], selectedFileForLLM.name, { type: 'application/octet-stream' })
+      
+      formData.append('files', file)
+      
+      if (encryptionKey) {
+        formData.append('decryption_key', encryptionKey)
+      }
+      
+      // Send to LLM processing endpoint
+      const response = await fetch('/api/llm/memories', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to process file for LLM')
+      }
+      
+      const result = await response.json()
+      showToast(`File processed for LLM: ${result.message}`, 'success')
+      
+      // Close modal and reset state
+      setShowLLMModal(false)
+      setSelectedFileForLLM(null)
+      setEncryptionKey('')
+      
+    } catch (error) {
+      console.error('Failed to process for LLM:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process file'
       showToast(errorMessage, 'error')
     }
   }
@@ -239,6 +295,13 @@ const CreatePage: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-2">
                               <button
+                                onClick={() => handleSendToLLM(file)}
+                                className="cyber-btn p-2"
+                                title="Send to LLM"
+                              >
+                                <Brain className="w-4 h-4" />
+                              </button>
+                              <button
                                 onClick={() => handleDownloadFile(file)}
                                 className="cyber-btn-secondary p-2"
                                 title="Download file"
@@ -309,6 +372,57 @@ const CreatePage: React.FC = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* LLM Processing Modal */}
+      {showLLMModal && selectedFileForLLM && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="cyber-terminal max-w-md w-full mx-4">
+            <div className="cyber-terminal-header">
+              <div className="flex items-center gap-2">
+                <Brain className="w-5 h-5 cyber-text-primary" />
+                <h3 className="cyber-h3 text-lg">Send to LLM</h3>
+              </div>
+            </div>
+            <div className="cyber-terminal-body space-y-4">
+              <p className="cyber-body cyber-text-secondary">
+                Processing <span className="cyber-text-primary">{selectedFileForLLM.name}</span> for LLM memory integration.
+              </p>
+              
+              <div>
+                <label className="block cyber-body cyber-text-primary mb-2">
+                  Decryption Key (optional)
+                </label>
+                <input
+                  type="password"
+                  value={encryptionKey}
+                  onChange={(e) => setEncryptionKey(e.target.value)}
+                  placeholder="Enter decryption key if file is encrypted"
+                  className="cyber-input w-full"
+                />
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowLLMModal(false)
+                    setSelectedFileForLLM(null)
+                    setEncryptionKey('')
+                  }}
+                  className="cyber-btn-secondary flex-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleProcessForLLM}
+                  className="cyber-btn flex-1"
+                >
+                  Process for LLM
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notifications */}
       {toast && (
