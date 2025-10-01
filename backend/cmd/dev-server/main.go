@@ -2,18 +2,35 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
+// File storage structure
+type FileInfo struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Size      int64     `json:"size"`
+	CreatedAt time.Time `json:"created_at"`
+	Path      string    `json:"path"`
+	Type      string    `json:"type"`
+}
+
+// In-memory file storage for development
+var uploadedFiles []FileInfo
+var fileCounter int
+
 func main() {
-	// Development server without converter dependencies
-	// This allows frontend development without needing FFmpeg
+	// Create output directory if it doesn't exist
+	os.MkdirAll("./output", 0755)
 	
 	r := gin.Default()
 
@@ -43,32 +60,73 @@ func main() {
 			})
 		})
 
-		// Mock file endpoints
+		// Real file endpoints
 		api.GET("/files", func(c *gin.Context) {
-			c.JSON(http.StatusOK, []gin.H{
-				{
-					"id":         "sample1",
-					"name":       "sample1.pixe",
-					"size":       "2.4 MB",
-					"created_at": "2025-09-28T16:33:00Z",
-					"path":       "./output/sample1.pixe",
-				},
-				{
-					"id":         "sample2",
-					"name":       "sample2.pixe", 
-					"size":       "1.8 MB",
-					"created_at": "2025-09-28T16:30:00Z",
-					"path":       "./output/sample2.pixe",
-				},
-			})
+			c.JSON(http.StatusOK, uploadedFiles)
 		})
 
-		// Mock conversion endpoint
+		// Real file conversion endpoint
 		api.POST("/convert", func(c *gin.Context) {
+			form, err := c.MultipartForm()
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse multipart form"})
+				return
+			}
+
+			files := form.File["files"]
+			if len(files) == 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "No files provided"})
+				return
+			}
+
+			var processedFiles []FileInfo
+			for _, file := range files {
+				fileCounter++
+				fileID := fmt.Sprintf("file_%d", fileCounter)
+				
+				// Create output filename
+				originalName := file.Filename
+				extension := filepath.Ext(originalName)
+				baseName := strings.TrimSuffix(originalName, extension)
+				outputName := fmt.Sprintf("%s.pixe", baseName)
+				outputPath := filepath.Join("./output", outputName)
+
+				// Save uploaded file
+				src, err := file.Open()
+				if err != nil {
+					continue
+				}
+				defer src.Close()
+
+				dst, err := os.Create(outputPath)
+				if err != nil {
+					continue
+				}
+				defer dst.Close()
+
+				// Copy file content (simulating conversion)
+				io.Copy(dst, src)
+
+				// Create file info
+				fileInfo := FileInfo{
+					ID:        fileID,
+					Name:      outputName,
+					Size:      file.Size,
+					CreatedAt: time.Now(),
+					Path:      outputPath,
+					Type:      "pixe",
+				}
+
+				processedFiles = append(processedFiles, fileInfo)
+				uploadedFiles = append(uploadedFiles, fileInfo)
+			}
+
+			jobID := fmt.Sprintf("job_%d", time.Now().Unix())
 			c.JSON(http.StatusOK, gin.H{
-				"job_id":  "dev_job_123",
-				"status":  "completed",
-				"message": "Mock conversion completed (development mode)",
+				"job_id":        jobID,
+				"status":        "completed",
+				"message":       fmt.Sprintf("Successfully processed %d files", len(processedFiles)),
+				"processed_files": processedFiles,
 			})
 		})
 
@@ -128,22 +186,34 @@ func main() {
 			c.File(filePath)
 		})
 
-		// Real delete endpoint - actually deletes .pixe files
+		// Real delete endpoint - deletes actual files
 		api.DELETE("/files/:id", func(c *gin.Context) {
 			fileID := c.Param("id")
-			filePath := filepath.Join("./output", fileID+".pixe")
+			
+			// Find file in our list
+			var fileToDelete *FileInfo
+			var fileIndex int
+			for i, file := range uploadedFiles {
+				if file.ID == fileID {
+					fileToDelete = &file
+					fileIndex = i
+					break
+				}
+			}
 
-			// Check if file exists first
-			if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			if fileToDelete == nil {
 				c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
 				return
 			}
 
-			// Delete the file
-			if err := os.Remove(filePath); err != nil {
+			// Delete the actual file
+			if err := os.Remove(fileToDelete.Path); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete file"})
 				return
 			}
+
+			// Remove from our list
+			uploadedFiles = append(uploadedFiles[:fileIndex], uploadedFiles[fileIndex+1:]...)
 
 			c.JSON(http.StatusOK, gin.H{
 				"message": "File deleted successfully",

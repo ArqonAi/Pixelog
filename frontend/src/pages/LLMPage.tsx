@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Brain, ArrowLeft, Upload, MessageSquare, Settings, Key, Eye, EyeOff, Send, FileText } from 'lucide-react'
+import { Brain, ArrowLeft, Upload, MessageSquare, Settings, Key, Eye, EyeOff, Send, FileText, Bot, Sliders } from 'lucide-react'
 
 interface ProcessedMemory {
   id: string
@@ -37,6 +37,53 @@ const LLMPage: React.FC = () => {
   })
   const [chatInput, setChatInput] = useState<string>('')
   const [isThinking, setIsThinking] = useState<boolean>(false)
+  
+  // AI Provider Settings
+  const [selectedProvider, setSelectedProvider] = useState<string>(() => {
+    return localStorage.getItem('pixelog-llm-provider') || 'openai'
+  })
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    return localStorage.getItem('pixelog-llm-model') || 'gpt-4'
+  })
+  const [apiKey, setApiKey] = useState<string>(() => {
+    return localStorage.getItem('pixelog-llm-apikey') || ''
+  })
+  const [showApiKey, setShowApiKey] = useState<boolean>(false)
+  const [showSettings, setShowSettings] = useState<boolean>(false)
+
+  // AI Provider configurations
+  const aiProviders = {
+    openai: {
+      name: 'OpenAI',
+      models: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+      keyPlaceholder: 'sk-...',
+      website: 'https://platform.openai.com/api-keys'
+    },
+    anthropic: {
+      name: 'Anthropic',
+      models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
+      keyPlaceholder: 'sk-ant-...',
+      website: 'https://console.anthropic.com/'
+    },
+    google: {
+      name: 'Google Gemini',
+      models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro'],
+      keyPlaceholder: 'AIza...',
+      website: 'https://aistudio.google.com/app/apikey'
+    },
+    grok: {
+      name: 'Grok (xAI)',
+      models: ['grok-beta'],
+      keyPlaceholder: 'xai-...',
+      website: 'https://x.ai/'
+    },
+    openrouter: {
+      name: 'OpenRouter',
+      models: ['openai/gpt-4', 'anthropic/claude-3-opus', 'google/gemini-pro', 'meta-llama/llama-3-70b'],
+      keyPlaceholder: 'sk-or-...',
+      website: 'https://openrouter.ai/keys'
+    }
+  }
 
   // Persist memories and chat to localStorage
   React.useEffect(() => {
@@ -46,6 +93,19 @@ const LLMPage: React.FC = () => {
   React.useEffect(() => {
     localStorage.setItem('pixelog-llm-chat', JSON.stringify(chatMessages))
   }, [chatMessages])
+
+  // Persist AI settings
+  React.useEffect(() => {
+    localStorage.setItem('pixelog-llm-provider', selectedProvider)
+  }, [selectedProvider])
+
+  React.useEffect(() => {
+    localStorage.setItem('pixelog-llm-model', selectedModel)
+  }, [selectedModel])
+
+  React.useEffect(() => {
+    localStorage.setItem('pixelog-llm-apikey', apiKey)
+  }, [apiKey])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || [])
@@ -83,7 +143,7 @@ const LLMPage: React.FC = () => {
   }
 
   const sendMessage = async () => {
-    if (!chatInput.trim() || processedMemories.length === 0) return
+    if (!chatInput.trim() || processedMemories.length === 0 || !apiKey.trim()) return
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -103,8 +163,9 @@ const LLMPage: React.FC = () => {
         body: JSON.stringify({
           query: currentInput,
           memory_ids: processedMemories.map(m => m.id),
-          provider: 'openai',
-          model: 'gpt-4'
+          provider: selectedProvider,
+          model: selectedModel,
+          api_key: apiKey
         })
       })
 
@@ -120,6 +181,13 @@ const LLMPage: React.FC = () => {
       setChatMessages(prev => [...prev, assistantMessage])
     } catch (error) {
       console.error('Error sending message:', error)
+      // Add error message to chat
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        type: 'assistant',
+        content: `Error: ${error instanceof Error ? error.message : 'Failed to send message. Please check your API key and try again.'}`
+      }
+      setChatMessages(prev => [...prev, errorMessage])
     } finally {
       setIsThinking(false)
     }
@@ -287,11 +355,111 @@ const LLMPage: React.FC = () => {
         {activeTab === 'chat' && (
           <div className="cyber-terminal h-[600px] flex flex-col">
             <div className="cyber-terminal-header">
-              <h2 className="cyber-h2 text-lg">Chat with Your Memories</h2>
-              <div className="cyber-mono text-xs cyber-text-secondary">
-                {processedMemories.length} memories loaded
+              <div className="flex items-center justify-between w-full">
+                <div>
+                  <h2 className="cyber-h2 text-lg">Chat with Your Memories</h2>
+                  <div className="flex items-center gap-4 cyber-mono text-xs cyber-text-secondary">
+                    <span>{processedMemories.length} memories loaded</span>
+                    <span className="flex items-center gap-1">
+                      <Bot className="w-3 h-3" />
+                      {aiProviders[selectedProvider as keyof typeof aiProviders]?.name} • {selectedModel}
+                    </span>
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      apiKey ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'
+                    }`}>
+                      {apiKey ? 'API Connected' : 'API Key Required'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className="cyber-btn-secondary p-2 flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden sm:inline">Settings</span>
+                </button>
               </div>
             </div>
+            
+            {/* Settings Panel */}
+            {showSettings && (
+              <div className="border-b border-gray-700/50 p-4 bg-gray-900/30">
+                <div className="grid md:grid-cols-3 gap-4">
+                  {/* Provider Selection */}
+                  <div>
+                    <label className="block cyber-body cyber-text-primary mb-2">
+                      AI Provider
+                    </label>
+                    <select
+                      value={selectedProvider}
+                      onChange={(e) => {
+                        setSelectedProvider(e.target.value)
+                        // Reset to first model when provider changes
+                        const newProvider = aiProviders[e.target.value as keyof typeof aiProviders]
+                        if (newProvider && newProvider.models.length > 0) {
+                          const firstModel = newProvider.models[0]
+                          if (firstModel) {
+                            setSelectedModel(firstModel)
+                          }
+                        }
+                      }}
+                      className="cyber-input w-full"
+                    >
+                      {Object.entries(aiProviders).map(([key, provider]) => (
+                        <option key={key} value={key}>{provider.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Model Selection */}
+                  <div>
+                    <label className="block cyber-body cyber-text-primary mb-2">
+                      Model
+                    </label>
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                      className="cyber-input w-full"
+                    >
+                      {aiProviders[selectedProvider as keyof typeof aiProviders]?.models.map((model) => (
+                        <option key={model} value={model}>{model}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* API Key */}
+                  <div>
+                    <label className="block cyber-body cyber-text-primary mb-2">
+                      API Key
+                      <a 
+                        href={aiProviders[selectedProvider as keyof typeof aiProviders]?.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-2 cyber-text-blue hover:cyber-text-primary text-xs"
+                      >
+                        Get Key →
+                      </a>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showApiKey ? 'text' : 'password'}
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder={aiProviders[selectedProvider as keyof typeof aiProviders]?.keyPlaceholder}
+                        className="cyber-input w-full pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 cyber-text-secondary hover:cyber-text-primary"
+                      >
+                        {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             
             <div className="cyber-terminal-body flex-1 flex flex-col min-h-0">
               <div className="flex-1 overflow-y-auto p-4 space-y-6 min-h-0">
@@ -355,13 +523,17 @@ const LLMPage: React.FC = () => {
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                      placeholder={processedMemories.length > 0 ? "Ask about your memories..." : "Upload memories first to chat"}
+                      placeholder={
+                        !apiKey ? "Enter API key in settings first" :
+                        processedMemories.length === 0 ? "Upload memories first to chat" :
+                        "Ask about your memories..."
+                      }
                       className="cyber-input w-full pr-12 py-3 text-base"
-                      disabled={processedMemories.length === 0}
+                      disabled={processedMemories.length === 0 || !apiKey.trim()}
                     />
                     <button
                       onClick={sendMessage}
-                      disabled={!chatInput.trim() || processedMemories.length === 0 || isThinking}
+                      disabled={!chatInput.trim() || processedMemories.length === 0 || !apiKey.trim() || isThinking}
                       className="absolute right-2 top-1/2 -translate-y-1/2 cyber-btn-secondary p-2 rounded-lg flex items-center justify-center disabled:opacity-50"
                     >
                       <Send className="w-4 h-4" />
@@ -372,12 +544,20 @@ const LLMPage: React.FC = () => {
                 {/* Chat Status */}
                 <div className="flex items-center justify-between mt-2 cyber-mono text-xs cyber-text-tertiary">
                   <span>
-                    {processedMemories.length > 0 
-                      ? `${processedMemories.length} memories • ${processedMemories.reduce((sum, m) => sum + m.chunks, 0).toLocaleString()} chunks ready`
-                      : "Upload .pixe files to start chatting"
+                    {!apiKey ? "⚠️ Configure API key in settings" :
+                     processedMemories.length === 0 ? "Upload .pixe files to start chatting" :
+                     `${processedMemories.length} memories • ${processedMemories.reduce((sum, m) => sum + m.chunks, 0).toLocaleString()} chunks ready`
                     }
                   </span>
-                  <span>Press Enter to send</span>
+                  <span className="flex items-center gap-2">
+                    {apiKey && (
+                      <span className="flex items-center gap-1 text-green-400">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        {aiProviders[selectedProvider as keyof typeof aiProviders]?.name}
+                      </span>
+                    )}
+                    <span>Press Enter to send</span>
+                  </span>
                 </div>
               </div>
             </div>

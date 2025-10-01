@@ -31,19 +31,61 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) =
     setIsDragOver(false)
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
+  const processDroppedItems = useCallback(async (items: DataTransferItemList): Promise<File[]> => {
+    const files: File[] = []
+    
+    const processEntry = async (entry: FileSystemEntry): Promise<void> => {
+      if (entry.isFile) {
+        const fileEntry = entry as FileSystemFileEntry
+        return new Promise<void>((resolve) => {
+          fileEntry.file((file) => {
+            files.push(file)
+            resolve()
+          })
+        })
+      } else if (entry.isDirectory) {
+        const dirEntry = entry as FileSystemDirectoryEntry
+        const reader = dirEntry.createReader()
+        return new Promise<void>((resolve) => {
+          reader.readEntries(async (entries) => {
+            for (const entry of entries) {
+              await processEntry(entry)
+            }
+            resolve()
+          })
+        })
+      }
+    }
+
+    const promises: Promise<void>[] = []
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (item && item.webkitGetAsEntry) {
+        const entry = item.webkitGetAsEntry()
+        if (entry) {
+          promises.push(processEntry(entry))
+        }
+      }
+    }
+    
+    await Promise.all(promises)
+    return files
+  }, [])
+
+  const handleDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>): Promise<void> => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
 
     if (isDisabled) return
 
-    const files = Array.from(e.dataTransfer.files)
+    // Handle both files and folders
+    const files = await processDroppedItems(e.dataTransfer.items)
     if (files.length > 0) {
       const password = encryptionEnabled ? encryptionPassword : undefined
       onFileDrop(files, password)
     }
-  }, [onFileDrop, isDisabled, encryptionEnabled, encryptionPassword])
+  }, [onFileDrop, isDisabled, encryptionEnabled, encryptionPassword, processDroppedItems])
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
     const files = Array.from(e.target.files ?? [])
@@ -99,10 +141,19 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) =
             type="file"
             multiple
             onChange={handleFileSelect}
-            className="hidden"
-            id="file-input"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             disabled={isDisabled}
-            accept="*/*"
+          />
+          <input
+            type="file"
+            // @ts-ignore - webkitdirectory is not in standard types
+            webkitdirectory="true"
+            directory="true"
+            multiple
+            onChange={handleFileSelect}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer hidden"
+            disabled={isDisabled}
+            id="folder-input"
           />
           
           <label 
@@ -112,18 +163,37 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) =
             <motion.div
               animate={isDragOver ? { scale: 1.1 } : { scale: 1 }}
               transition={{ duration: 0.3 }}
-              className="mb-6"
             >
-              <Upload className="w-16 h-16 cyber-text-cyber mx-auto mb-4" />
-            </motion.div>
-            
-            <h3 className="cyber-h3 text-xl cyber-text-primary mb-3">
-              {isDragOver ? 'Drop files here' : 'Upload your files'}
-            </h3>
-            
-            <p className="cyber-body cyber-text-secondary mb-6">
-              Drag and drop files or click to browse
-            </p>
+              <div className="flex items-center justify-center mb-4">
+                <Upload className="w-12 h-12 cyber-text-secondary" />
+              </div>
+              
+              <h3 className="cyber-h3 text-xl mb-3 text-center">
+                {isDragOver ? 'Drop your files/folders here!' : 'Drag & drop files or folders'}
+              </h3>
+              
+              <p className="cyber-body cyber-text-secondary text-center mb-4">
+                Support for documents, images, videos, and more
+              </p>
+              
+              <div className="flex gap-2 justify-center mb-6">
+                <button 
+                  type="button" 
+                  className="cyber-btn-secondary text-sm px-4 py-2"
+                  onClick={() => (document.querySelector('input[type="file"]:not(#folder-input)') as HTMLInputElement)?.click()}
+                  disabled={isDisabled}
+                >
+                  Select Files
+                </button>
+                <button 
+                  type="button" 
+                  className="cyber-btn-secondary text-sm px-4 py-2"
+                  onClick={() => (document.getElementById('folder-input') as HTMLInputElement)?.click()}
+                  disabled={isDisabled}
+                >
+                  Select Folder
+                </button>
+              </div>
             
             {/* File Type Support */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -144,6 +214,7 @@ const DropZone: React.FC<DropZoneProps> = ({ onFileDrop, isDisabled = false }) =
                 <span className="cyber-mono text-xs cyber-text-secondary block">Video</span>
               </div>
             </div>
+            </motion.div>
           </label>
         </motion.div>
         
