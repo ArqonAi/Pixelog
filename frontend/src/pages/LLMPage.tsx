@@ -293,7 +293,7 @@ const LLMPage: React.FC = () => {
             <div className="grid lg:grid-cols-2 gap-6">
               <div className="cyber-terminal">
                 <div className="cyber-terminal-header">
-                  <h2 className="cyber-h2 text-lg">Process .pixe Memories</h2>
+                  <h2 className="cyber-h2 text-lg">Upload .pixe Files</h2>
                 </div>
                 <div className="cyber-terminal-body space-y-6">
                   <div>

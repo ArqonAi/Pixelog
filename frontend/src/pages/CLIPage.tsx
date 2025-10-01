@@ -13,7 +13,16 @@ const CLIPage: React.FC = () => {
 
   return (
     <div className="min-h-screen cyber-bg-void">
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="cyber-h1 text-4xl mb-4">CLI Documentation</h1>
+          <p className="cyber-body cyber-text-secondary text-lg">
+            Command-line interface for Pixelog file operations
+          </p>
+        </div>
+
+      <main className="max-w-4xl mx-auto">
         {/* Installation */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
@@ -307,6 +316,7 @@ preserve_metadata: true`}
           </div>
         </motion.section>
       </main>
+      </div>
     </div>
   )
 }
