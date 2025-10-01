@@ -271,17 +271,18 @@ const CLIPage: React.FC = () => {
             Configuration
           </h2>
           
-          <div className="cyber-bg-panel p-6 rounded-lg">
-            <p className="cyber-body cyber-text-secondary mb-4">
-              Create a configuration file at <code className="cyber-mono bg-gray-800 px-2 py-1 rounded">~/.pixelog/config.yaml</code>:
-            </p>
-            
-            <div className="cyber-terminal">
-              <div className="cyber-terminal-header">
+          <div className="cyber-terminal">
+            <div className="cyber-terminal-header">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 cyber-text-amber" />
                 <span className="cyber-mono text-sm">config.yaml</span>
               </div>
-              <div className="cyber-terminal-body">
-                <pre className="cyber-mono text-sm text-cyan-400">
+            </div>
+            <div className="cyber-terminal-body space-y-4">
+              <p className="cyber-body cyber-text-secondary">
+                Create a configuration file at <code className="cyber-mono bg-gray-800 px-2 py-1 rounded">~/.pixelog/config.yaml</code>:
+              </p>
+              <pre className="cyber-mono text-sm text-cyan-400 bg-gray-900/50 p-4 rounded overflow-x-auto">
 {`# Video encoding settings
 quality: 23
 framerate: 0.5
@@ -301,8 +302,7 @@ search:
 # Output settings
 output_dir: "./output"
 preserve_metadata: true`}
-                </pre>
-              </div>
+              </pre>
             </div>
           </div>
         </motion.section>
