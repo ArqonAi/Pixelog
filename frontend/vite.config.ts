@@ -17,7 +17,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': {
+      '^/api/(files|convert|extract|contents|search|llm|health)': {
         target: 'http://localhost:8080',
         changeOrigin: true
       }
