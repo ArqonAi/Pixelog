@@ -209,21 +209,7 @@ const CreatePage: React.FC = () => {
         throw new Error('Failed to process file for LLM')
       }
       
-      let result
-      try {
-        result = await response.json()
-      } catch (jsonError) {
-        // Backend doesn't have LLM endpoints - create mock response
-        result = {
-          message: 'Development mode - LLM processing simulated',
-          memories: [{
-            id: selectedFileForLLM.id,
-            filename: selectedFileForLLM.name,
-            chunks: Math.floor(Math.random() * 2000) + 500,
-            status: 'ready'
-          }]
-        }
-      }
+      const result = await response.json()
       
       showToast(`File processed for LLM: ${result.message}`, 'success')
       

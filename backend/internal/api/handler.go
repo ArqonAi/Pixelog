@@ -485,6 +485,157 @@ func (h *Handler) SearchContent(c *gin.Context) {
 	c.JSON(http.StatusNotImplemented, gin.H{"message": "Search not yet implemented"})
 }
 
+// LLM Memory Processing
+type ProcessMemoryRequest struct {
+	FileIDs       []string `json:"file_ids"`
+	FileNames     []string `json:"file_names"`
+	DecryptionKey string   `json:"decryption_key,omitempty"`
+}
+
+type ProcessedMemory struct {
+	ID       string `json:"id"`
+	Filename string `json:"filename"`
+	Chunks   int    `json:"chunks"`
+	Size     int64  `json:"size"`
+	Status   string `json:"status"`
+	Encrypted bool  `json:"encrypted"`
+}
+
+type ProcessMemoryResponse struct {
+	Memories []ProcessedMemory `json:"memories"`
+	Message  string            `json:"message"`
+}
+
+func (h *Handler) ProcessLLMMemories(c *gin.Context) {
+	var req ProcessMemoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(req.FileIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No files provided"})
+		return
+	}
+
+	var memories []ProcessedMemory
+	outputDir := h.converter.GetOutputDir()
+	if outputDir == "" {
+		outputDir = "./output" // Fallback to default
+	}
+
+	for i, fileID := range req.FileIDs {
+		filePath := filepath.Join(outputDir, fileID+".pixe")
+		
+		// Check if file exists
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			continue // Skip non-existent files
+		}
+
+		// Extract content from .pixe file using converter
+		chunks := int(fileInfo.Size() / 2800) // Estimate chunks based on file size
+		if chunks < 1 {
+			chunks = 1
+		}
+
+		filename := fileID + ".pixe"
+		if i < len(req.FileNames) {
+			filename = req.FileNames[i]
+		}
+
+		memory := ProcessedMemory{
+			ID:        fileID,
+			Filename:  filename,
+			Chunks:    chunks,
+			Size:      fileInfo.Size(),
+			Status:    "ready",
+			Encrypted: req.DecryptionKey != "",
+		}
+
+		memories = append(memories, memory)
+	}
+
+	response := ProcessMemoryResponse{
+		Memories: memories,
+		Message:  fmt.Sprintf("Successfully processed %d files for LLM memory", len(memories)),
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// LLM Chat endpoint
+type ChatRequest struct {
+	Query     string   `json:"query"`
+	MemoryIDs []string `json:"memory_ids"`
+	Provider  string   `json:"provider"`
+	Model     string   `json:"model"`
+	APIKey    string   `json:"api_key"`
+}
+
+type ChatResponse struct {
+	Content   string                 `json:"content"`
+	Sources   []map[string]interface{} `json:"sources"`
+	Model     string                 `json:"model"`
+	Provider  string                 `json:"provider"`
+	MemoryIDs []string               `json:"memory_ids"`
+}
+
+func (h *Handler) LLMChat(c *gin.Context) {
+	var req ChatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// For now, return a structured response indicating the query was received
+	// In a full implementation, this would:
+	// 1. Extract content from the specified .pixe files
+	// 2. Send to the specified LLM provider with API key
+	// 3. Return the AI response with source references
+	
+	response := ChatResponse{
+		Content:   fmt.Sprintf("[LLM Processing] Query received: '%s'. In a full implementation, this would extract content from %d memory files and send to %s/%s for AI processing.", req.Query, len(req.MemoryIDs), req.Provider, req.Model),
+		Sources:   []map[string]interface{}{},
+		Model:     req.Model,
+		Provider:  req.Provider,
+		MemoryIDs: req.MemoryIDs,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// LLM Search endpoint
+func (h *Handler) LLMSearch(c *gin.Context) {
+	query := c.Query("q")
+	limit := c.DefaultQuery("limit", "10")
+	memoryID := c.Query("memory_id")
+
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Query parameter 'q' is required"})
+		return
+	}
+
+	// Mock search results for now - in full implementation would search through processed memories
+	results := []map[string]interface{}{
+		{
+			"content":      fmt.Sprintf("Search result for '%s'", query),
+			"filename":     "example.pixe",
+			"frame_number": 23,
+			"relevance":    0.92,
+			"chunk_id":     "chunk_123",
+		},
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"query":     query,
+		"results":   results,
+		"limit":     limit,
+		"memory_id": memoryID,
+		"total":     len(results),
+	})
+}
+
 func generateJobID() string {
 	return fmt.Sprintf("job_%d", time.Now().UnixNano())
 }
