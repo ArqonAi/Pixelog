@@ -14,25 +14,43 @@ const APIPage: React.FC = () => {
         </div>
 
         <div className="space-y-12">
-          {/* Authentication */}
+          {/* LLM API Configuration */}
           <section>
             <div className="cyber-terminal">
               <div className="cyber-terminal-header">
                 <div className="flex items-center gap-2">
-                  <Lock className="w-5 h-5 cyber-text-primary" />
-                  <h2 className="cyber-h2 text-xl">Authentication</h2>
+                  <MessageSquare className="w-5 h-5 cyber-text-primary" />
+                  <h2 className="cyber-h2 text-xl">LLM API Configuration</h2>
                 </div>
               </div>
               <div className="cyber-terminal-body space-y-4">
                 <p className="cyber-body cyber-text-secondary">
-                  All API requests require authentication via API key in the Authorization header.
+                  Pixelog APIs are public, but LLM features require your own API keys.
                 </p>
-                <div className="cyber-bg-panel p-4 rounded-lg">
-                  <pre className="cyber-mono text-sm cyber-text-primary overflow-x-auto">
-{`curl -H "Authorization: Bearer YOUR_API_KEY" \\
-     -H "Content-Type: application/json" \\
-     http://localhost:8080/api/endpoint`}
-                  </pre>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="cyber-body cyber-text-primary mb-2">Via Chat Interface:</h4>
+                    <p className="cyber-mono text-sm cyber-text-secondary mb-2">
+                      Configure API keys directly in the web interface settings panel.
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <h4 className="cyber-body cyber-text-primary mb-2">Via CLI:</h4>
+                    <div className="cyber-bg-panel p-4 rounded-lg">
+                      <pre className="cyber-mono text-sm cyber-text-primary overflow-x-auto">
+{`# Set API key via environment variable
+export OPENAI_API_KEY="your-key-here"
+export GOOGLE_API_KEY="your-key-here"
+
+# Or configure in ~/.pixelog/config.yaml
+search:
+  provider: "openai"
+  openai_api_key: "your-api-key"
+  google_api_key: "your-api-key"`}
+                      </pre>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
