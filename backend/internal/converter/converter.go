@@ -96,7 +96,12 @@ func (c *Converter) Convert(inputPath, outputPath string, progressChan chan<- Pr
 	}
 
 	c.setJob(jobID, job)
-	defer c.removeJob(jobID)
+	// Don't immediately remove job - keep it for status checking
+	// Remove after 10 minutes to prevent memory leaks
+	go func() {
+		time.Sleep(10 * time.Minute)
+		c.removeJob(jobID)
+	}()
 
 	updateProgress := func(stage string, progress int, message string) {
 		job.Stage = stage

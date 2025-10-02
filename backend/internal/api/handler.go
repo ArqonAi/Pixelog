@@ -278,7 +278,7 @@ func (h *Handler) ConvertFile(c *gin.Context) {
 }
 
 func (h *Handler) GetProgress(c *gin.Context) {
-	jobID := c.Param("id")
+	jobID := c.Param("job_id")
 
 	job, exists := h.converter.GetJob(jobID)
 	if !exists {
@@ -290,7 +290,7 @@ func (h *Handler) GetProgress(c *gin.Context) {
 }
 
 func (h *Handler) WebSocketHandler(c *gin.Context) {
-	jobID := c.Param("id")
+	jobID := c.Param("job_id")
 
 	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
