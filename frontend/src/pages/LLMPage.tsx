@@ -70,6 +70,8 @@ const LLMPage: React.FC = () => {
   const [showExportModal, setShowExportModal] = useState<boolean>(false)
   const [exportEncryptionKey, setExportEncryptionKey] = useState<string>('')
   const [isExporting, setIsExporting] = useState<boolean>(false)
+  const [exportStep, setExportStep] = useState<'format' | 'encryption'>('format')
+  const [selectedExportFormat, setSelectedExportFormat] = useState<'pixe' | 'txt'>('pixe')
   
   // Create tab state
   const [pixeFiles, setPixeFiles] = useState<PixelogFile[]>([])
@@ -185,6 +187,11 @@ const LLMPage: React.FC = () => {
       alert('No chat messages to export')
       return
     }
+    // Reset modal state
+    setExportStep('format')
+    setSelectedExportFormat('pixe')
+    setExportEncryptionKey('')
+    setIsExporting(false)
     setShowExportModal(true)
   }
 
@@ -192,9 +199,6 @@ const LLMPage: React.FC = () => {
     setIsExporting(true)
     
     try {
-      // For now, just create a simple text file download
-      // until we fix the FFmpeg conversion issues
-      
       // Format chat messages as structured content
       const chatContent = chatMessages.map((msg, index) => {
         const timestamp = new Date(Date.now() - (chatMessages.length - index) * 60000).toISOString()
@@ -205,25 +209,73 @@ const LLMPage: React.FC = () => {
       // Add metadata header
       const fullContent = `# Pixelog Chat Session Export\nExported: ${new Date().toISOString()}\nProvider: ${selectedProvider}\nModel: ${selectedModel}\nMemories Connected: ${connectedMemories.size}\n\n---\n\n${chatContent}`
 
-      // Create and download as text file for now
-      const blob = new Blob([fullContent], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      
-      // Create download link
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `pixelog-chat-${new Date().toISOString().split('T')[0]}.txt`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      if (selectedExportFormat === 'txt') {
+        // Simple text file download
+        const blob = new Blob([fullContent], { type: 'text/plain' })
+        const url = URL.createObjectURL(blob)
+        
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `pixelog-chat-${new Date().toISOString().split('T')[0]}.txt`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        
+        alert('Chat exported successfully as text file!')
+      } else {
+        // Create .pixe file using backend API
+        const formData = new FormData()
+        
+        // Create a text file blob to send to the conversion API
+        const textBlob = new Blob([fullContent], { type: 'text/plain' })
+        const fileName = `pixelog-chat-${new Date().toISOString().split('T')[0]}.txt`
+        const file = new File([textBlob], fileName, { type: 'text/plain' })
+        
+        formData.append('files', file)
+        if (exportEncryptionKey.trim()) {
+          formData.append('encryption_key', exportEncryptionKey.trim())
+        }
+
+        console.log('Converting chat to .pixe file...')
+        const response = await fetch('http://localhost:8080/api/convert', {
+          method: 'POST',
+          body: formData
+        })
+
+        const result = await response.json()
+        console.log('Conversion result:', result)
+        
+        if (response.ok) {
+          // Refresh both file lists
+          await fetchPixeFiles()
+          
+          // Add to processed memories immediately
+          const newMemory = {
+            id: `chat-export-${Date.now()}`,
+            filename: fileName.replace('.txt', '.pixe'),
+            size: textBlob.size,
+            chunks: Math.ceil(fullContent.length / 100), // Estimate chunks
+            status: 'ready',
+            encrypted: !!exportEncryptionKey.trim()
+          }
+          
+          const updatedMemories = [...processedMemories, newMemory]
+          setProcessedMemories(updatedMemories)
+          localStorage.setItem('pixelog-llm-memories', JSON.stringify(updatedMemories))
+          
+          alert('Chat successfully converted to .pixe file and added to your memories!')
+        } else {
+          throw new Error(`Conversion failed: ${result.error || 'Unknown error'}`)
+        }
+      }
       
       // Close modal and reset
       setShowExportModal(false)
       setExportEncryptionKey('')
+      setExportStep('format')
+      setSelectedExportFormat('pixe')
       setIsExporting(false)
-      
-      alert('Chat exported successfully and downloaded as text file!')
       
     } catch (error) {
       console.error('Error creating file:', error)
@@ -984,65 +1036,136 @@ const LLMPage: React.FC = () => {
           <div className="cyber-bg-panel border border-cyan-500/30 rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
             <h3 className="text-xl font-bold cyber-text-primary mb-6 flex items-center gap-2">
               <Download className="w-5 h-5" />
-              Export Chat as .pixe File
+              Export Chat Session
             </h3>
             
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm cyber-text-secondary mb-2">
-                  Encryption Key (Optional)
-                </label>
-                <input
-                  type="password"
-                  value={exportEncryptionKey}
-                  onChange={(e) => setExportEncryptionKey(e.target.value)}
-                  placeholder="Leave empty for no encryption"
-                  className="w-full px-3 py-2 cyber-input"
-                />
-                <p className="text-xs cyber-text-muted mt-1">
-                  If provided, the .pixe file will be encrypted with this key
-                </p>
+            {exportStep === 'format' ? (
+              // Step 1: Choose export format
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm cyber-text-secondary mb-3">
+                    Choose Export Format
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-600 hover:border-cyan-500/50 cursor-pointer transition-colors">
+                      <input
+                        type="radio"
+                        name="exportFormat"
+                        value="pixe"
+                        checked={selectedExportFormat === 'pixe'}
+                        onChange={(e) => setSelectedExportFormat(e.target.value as 'pixe')}
+                        className="cyber-radio"
+                      />
+                      <div>
+                        <div className="cyber-text-primary font-medium">📦 .pixe File</div>
+                        <div className="text-xs cyber-text-secondary">Portable encrypted format, can be imported back into LLM</div>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-600 hover:border-cyan-500/50 cursor-pointer transition-colors">
+                      <input
+                        type="radio"
+                        name="exportFormat"
+                        value="txt"
+                        checked={selectedExportFormat === 'txt'}
+                        onChange={(e) => setSelectedExportFormat(e.target.value as 'txt')}
+                        className="cyber-radio"
+                      />
+                      <div>
+                        <div className="cyber-text-primary font-medium">📄 .txt File</div>
+                        <div className="text-xs cyber-text-secondary">Simple text format for reading or sharing</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                
+                <div className="text-sm cyber-text-secondary">
+                  <p><strong>Chat Summary:</strong></p>
+                  <p>• {chatMessages.length} messages</p>
+                  <p>• Provider: {selectedProvider}</p>
+                  <p>• Model: {selectedModel}</p>
+                  <p>• Connected memories: {connectedMemories.size}</p>
+                </div>
+                
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowExportModal(false)
+                      setExportStep('format')
+                      setExportEncryptionKey('')
+                      setIsExporting(false)
+                    }}
+                    className="flex-1 px-4 py-2 cyber-btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (selectedExportFormat === 'txt') {
+                        createPixeFile()
+                      } else {
+                        setExportStep('encryption')
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 cyber-btn-primary"
+                  >
+                    Next →
+                  </button>
+                </div>
               </div>
-              
-              <div className="text-sm cyber-text-secondary">
-                <p><strong>Chat Summary:</strong></p>
-                <p>• {chatMessages.length} messages</p>
-                <p>• Provider: {selectedProvider}</p>
-                <p>• Model: {selectedModel}</p>
-                <p>• Connected memories: {connectedMemories.size}</p>
+            ) : (
+              // Step 2: Encryption key for .pixe files
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm cyber-text-secondary mb-2">
+                    Encryption Key (Optional)
+                  </label>
+                  <input
+                    type="password"
+                    value={exportEncryptionKey}
+                    onChange={(e) => setExportEncryptionKey(e.target.value)}
+                    placeholder="Leave empty for no encryption"
+                    className="w-full px-3 py-2 cyber-input"
+                  />
+                  <p className="text-xs cyber-text-muted mt-1">
+                    If provided, the .pixe file will be encrypted with this key
+                  </p>
+                </div>
+                
+                <div className="text-sm cyber-text-secondary bg-gray-900/50 p-3 rounded-lg">
+                  <p><strong>Creating .pixe file with:</strong></p>
+                  <p>• {chatMessages.length} messages</p>
+                  <p>• {exportEncryptionKey.trim() ? 'Encrypted' : 'No encryption'}</p>
+                  <p>• Will be added to your memories automatically</p>
+                </div>
+                
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setExportStep('format')}
+                    disabled={isExporting}
+                    className="flex-1 px-4 py-2 cyber-btn-secondary disabled:opacity-50"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    onClick={createPixeFile}
+                    disabled={isExporting}
+                    className="flex-1 px-4 py-2 cyber-btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isExporting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Create .pixe File
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
-            
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowExportModal(false)
-                  setExportEncryptionKey('')
-                  setIsExporting(false)
-                }}
-                disabled={isExporting}
-                className="flex-1 px-4 py-2 cyber-btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={createPixeFile}
-                disabled={isExporting}
-                className="flex-1 px-4 py-2 cyber-btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isExporting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4" />
-                    Create .pixe File
-                  </>
-                )}
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}
