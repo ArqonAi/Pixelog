@@ -513,18 +513,6 @@ const LLMPage: React.FC = () => {
               <div className="flex items-center justify-between w-full">
                 <div className="flex-1">
                   <h2 className="cyber-h2 text-lg">Chat with Your Memories</h2>
-                  <div className="flex items-center gap-4 cyber-mono text-xs cyber-text-secondary">
-                    <span>{connectedMemories.size} memories connected</span>
-                    <span className="flex items-center gap-1">
-                      <Bot className="w-3 h-3" />
-                      {aiProviders[selectedProvider as keyof typeof aiProviders]?.name} • {selectedModel}
-                    </span>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      apiKey ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'
-                    }`}>
-                      {apiKey ? 'API Connected' : 'API Key Required'}
-                    </span>
-                  </div>
                 </div>
                 
                 {/* Export Chat Button */}
