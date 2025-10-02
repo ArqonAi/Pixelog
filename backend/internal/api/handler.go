@@ -264,9 +264,11 @@ func (h *Handler) ConvertFile(c *gin.Context) {
 			}
 		}
 
-		if err := h.converter.Convert(inputPath, outputPath, progressChan); err != nil {
-			// Handle error (could be logged or stored for retrieval)
-			return
+		err := h.converter.Convert(inputPath, outputPath, progressChan)
+		if err != nil {
+			fmt.Printf("Conversion error for job %s: %v\n", jobID, err)
+		} else {
+			fmt.Printf("Conversion completed successfully for job %s\n", jobID)
 		}
 	}()
 
@@ -279,13 +281,17 @@ func (h *Handler) ConvertFile(c *gin.Context) {
 
 func (h *Handler) GetProgress(c *gin.Context) {
 	jobID := c.Param("job_id")
+	
+	fmt.Printf("DEBUG: Looking for job ID: %s\n", jobID)
 
 	job, exists := h.converter.GetJob(jobID)
 	if !exists {
+		fmt.Printf("DEBUG: Job not found: %s\n", jobID)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
 		return
 	}
 
+	fmt.Printf("DEBUG: Found job: %+v\n", job)
 	c.JSON(http.StatusOK, job)
 }
 

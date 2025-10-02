@@ -170,6 +170,9 @@ const LLMPage: React.FC = () => {
     setIsExporting(true)
     
     try {
+      // For now, just create a simple text file download
+      // until we fix the FFmpeg conversion issues
+      
       // Format chat messages as structured content
       const chatContent = chatMessages.map((msg, index) => {
         const timestamp = new Date(Date.now() - (chatMessages.length - index) * 60000).toISOString()
@@ -180,84 +183,30 @@ const LLMPage: React.FC = () => {
       // Add metadata header
       const fullContent = `# Pixelog Chat Session Export\nExported: ${new Date().toISOString()}\nProvider: ${selectedProvider}\nModel: ${selectedModel}\nMemories Connected: ${connectedMemories.size}\n\n---\n\n${chatContent}`
 
-      // Create chat file for conversion
-      const chatBlob = new Blob([fullContent], { type: 'text/plain' })
-      const chatFile = new File([chatBlob], `chat-session-${Date.now()}.txt`, { type: 'text/plain' })
-
-      // Prepare form data with optional encryption
-      const formData = new FormData()
-      formData.append('files', chatFile)
-      if (exportEncryptionKey.trim()) {
-        formData.append('encryption_key', exportEncryptionKey)
-      }
-
-      console.log('Starting .pixe conversion...')
-      const convertResponse = await fetch('http://localhost:8080/api/convert', {
-        method: 'POST',
-        body: formData
-      })
-
-      const convertResult = await convertResponse.json()
+      // Create and download as text file for now
+      const blob = new Blob([fullContent], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
       
-      if (!convertResponse.ok) {
-        throw new Error(`Conversion failed: ${convertResult.error || 'Unknown error'}`)
-      }
-
-      const jobId = convertResult.job_id
-      console.log('Conversion started, job ID:', jobId)
-
-      // Poll for completion
-      let attempts = 0
-      const maxAttempts = 30 // 30 seconds timeout
+      // Create download link
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `pixelog-chat-${new Date().toISOString().split('T')[0]}.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
       
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
-        
-        const statusResponse = await fetch(`http://localhost:8080/api/status/${jobId}`)
-        const statusResult = await statusResponse.json()
-        
-        console.log('Job status:', statusResult)
-        
-        if (statusResult.status === 'completed') {
-          // Download the file
-          const downloadResponse = await fetch(`http://localhost:8080/api/files/${jobId}`)
-          
-          if (!downloadResponse.ok) {
-            throw new Error('Failed to download the .pixe file')
-          }
-          
-          const blob = await downloadResponse.blob()
-          const url = URL.createObjectURL(blob)
-          
-          // Create download link
-          const a = document.createElement('a')
-          a.href = url
-          a.download = `chat-session-${new Date().toISOString().split('T')[0]}.pixe`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-          
-          // Close modal and reset
-          setShowExportModal(false)
-          setExportEncryptionKey('')
-          setIsExporting(false)
-          
-          alert('Chat exported successfully and downloaded!')
-          return
-        } else if (statusResult.status === 'failed') {
-          throw new Error(`Conversion failed: ${statusResult.error || 'Unknown error'}`)
-        }
-        
-        attempts++
-      }
+      // Close modal and reset
+      setShowExportModal(false)
+      setExportEncryptionKey('')
+      setIsExporting(false)
       
-      throw new Error('Conversion timed out. Please try again.')
+      alert('Chat exported successfully and downloaded as text file!')
       
     } catch (error) {
-      console.error('Error creating .pixe file:', error)
+      console.error('Error creating file:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      alert(`Error creating .pixe file: ${errorMessage}`)
+      alert(`Error creating file: ${errorMessage}`)
       setIsExporting(false)
     }
   }
