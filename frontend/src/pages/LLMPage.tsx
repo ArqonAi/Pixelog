@@ -790,7 +790,7 @@ const LLMPage: React.FC = () => {
                     <p className="cyber-body text-sm">
                       {connectedMemories.size > 0 
                         ? "Ask questions about your connected memories" 
-                        : "Connect memories first to start chatting"}
+                        : "Start a conversation or connect memories for context"}
                     </p>
                   </div>
                 ) : (
@@ -855,15 +855,15 @@ const LLMPage: React.FC = () => {
                       onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                       placeholder={
                         !apiKey ? "Enter API key in settings first" :
-                        connectedMemories.size === 0 ? "Connect memories first to chat" :
+                        connectedMemories.size === 0 ? "Ask about your memories or start a conversation..." :
                         "Ask about your connected memories..."
                       }
                       className="cyber-input w-full pr-12 py-3 text-base"
-                      disabled={connectedMemories.size === 0 || !apiKey.trim()}
+                      disabled={!apiKey.trim()}
                     />
                     <button
                       onClick={sendMessage}
-                      disabled={!chatInput.trim() || connectedMemories.size === 0 || !apiKey.trim() || isThinking}
+                      disabled={!chatInput.trim() || !apiKey.trim() || isThinking}
                       className="absolute right-2 top-1/2 -translate-y-1/2 cyber-btn-secondary p-2 rounded-lg flex items-center justify-center disabled:opacity-50 hover:bg-cyan-500/10 active:bg-cyan-500/20 transition-colors"
                       title="Send message (Enter)"
                     >
@@ -876,7 +876,7 @@ const LLMPage: React.FC = () => {
                 <div className="flex items-center justify-between mt-2 cyber-mono text-xs cyber-text-tertiary">
                   <span>
                     {!apiKey ? "⚠️ Configure API key in settings" :
-                     connectedMemories.size === 0 ? "Connect memories to start chatting" :
+                     connectedMemories.size === 0 ? "Ready to chat • Connect memories for context" :
                      `${connectedMemories.size} connected • ${processedMemories.filter(m => connectedMemories.has(m.id)).reduce((sum, m) => sum + m.chunks, 0).toLocaleString()} chunks active`
                     }
                   </span>
