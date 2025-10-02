@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Brain, ArrowLeft, Upload, MessageSquare, Settings, Key, Eye, EyeOff, Send, FileText, Bot, Sliders, Zap, Trash2, Power, PowerOff, Download } from 'lucide-react'
+import { Brain, ArrowLeft, Upload, MessageSquare, Settings, Key, Eye, EyeOff, Send, FileText, Bot, User, Sliders, Zap, Trash2, Power, PowerOff, Download } from 'lucide-react'
 
 interface ProcessedMemory {
   id: string
@@ -692,14 +692,6 @@ const LLMPage: React.FC = () => {
               </div>
               
               {/* Message Input */}
-              <div className="relative">
-                <textarea
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      sendMessage()
               <div className="border-t border-gray-700/50 p-4 bg-gray-900/20">
                 <div className="flex gap-3">
                   <div className="flex-1 relative">
@@ -719,7 +711,8 @@ const LLMPage: React.FC = () => {
                     <button
                       onClick={sendMessage}
                       disabled={!chatInput.trim() || connectedMemories.size === 0 || !apiKey.trim() || isThinking}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 cyber-btn-secondary p-2 rounded-lg flex items-center justify-center disabled:opacity-50"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 cyber-btn-secondary p-2 rounded-lg flex items-center justify-center disabled:opacity-50 hover:bg-cyan-500/10 active:bg-cyan-500/20 transition-colors"
+                      title="Send message (Enter)"
                     >
                       <Send className="w-4 h-4" />
                     </button>
