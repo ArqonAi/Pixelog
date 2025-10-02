@@ -713,48 +713,56 @@ func (h *Handler) LLMChat(c *gin.Context) {
 		return
 	}
 
-	// Extract content from .pixe files using QR decoding
-	var extractedContent []string
-	outputDir := h.converter.GetOutputDir()
-	if outputDir == "" {
-		outputDir = "./output"
-	}
+	// Prepare context for LLM
+	var prompt string
+	
+	// If memory IDs are provided, extract content from .pixe files
+	if len(req.MemoryIDs) > 0 {
+		var extractedContent []string
+		outputDir := h.converter.GetOutputDir()
+		if outputDir == "" {
+			outputDir = "./output"
+		}
 
-	for _, memoryID := range req.MemoryIDs {
-		var filePath string
-		
-		// Try multiple paths to find the file
-		filePath = filepath.Join(outputDir, memoryID+".pixe")
-		if _, err := os.Stat(filePath); err != nil {
-			filePath = filepath.Join("./output", memoryID+".pixe")
+		for _, memoryID := range req.MemoryIDs {
+			var filePath string
+			
+			// Try multiple paths to find the file
+			filePath = filepath.Join(outputDir, memoryID+".pixe")
 			if _, err := os.Stat(filePath); err != nil {
-				filePath = filepath.Join("output", memoryID+".pixe")
+				filePath = filepath.Join("./output", memoryID+".pixe")
 				if _, err := os.Stat(filePath); err != nil {
-					continue // Skip if file not found
+					filePath = filepath.Join("output", memoryID+".pixe")
+					if _, err := os.Stat(filePath); err != nil {
+						continue // Skip if file not found
+					}
 				}
+			}
+
+			// Extract QR-encoded content from .pixe file
+			fileContent, err := h.extractPixeContent(filePath)
+			if err != nil {
+				fmt.Printf("Error extracting content from %s: %v\n", filePath, err)
+				continue
+			}
+
+			if len(fileContent) > 0 {
+				extractedContent = append(extractedContent, fmt.Sprintf("File %s:\n%s", memoryID, fileContent))
 			}
 		}
 
-		// Extract QR-encoded content from .pixe file
-		fileContent, err := h.extractPixeContent(filePath)
-		if err != nil {
-			fmt.Printf("Error extracting content from %s: %v\n", filePath, err)
-			continue
+		if len(extractedContent) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "No content found in specified memory files"})
+			return
 		}
 
-		if len(fileContent) > 0 {
-			extractedContent = append(extractedContent, fmt.Sprintf("File %s:\n%s", memoryID, fileContent))
-		}
+		// Prepare context with memory content
+		context := strings.Join(extractedContent, "\n\n---\n\n")
+		prompt = fmt.Sprintf("Context from memory files:\n%s\n\nUser question: %s", context, req.Query)
+	} else {
+		// No memory files, just use the query directly
+		prompt = req.Query
 	}
-
-	if len(extractedContent) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No content found in specified memory files"})
-		return
-	}
-
-	// Prepare context for LLM
-	context := strings.Join(extractedContent, "\n\n---\n\n")
-	prompt := fmt.Sprintf("Context from memory files:\n%s\n\nUser question: %s", context, req.Query)
 
 	// Make API call to LLM provider
 	allmResponse, err := h.callLLMProvider(req.Provider, req.Model, req.APIKey, prompt)
