@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Brain, ArrowLeft, Upload, MessageSquare, Settings, Key, Eye, EyeOff, Send, FileText, Bot, User, Sliders, Zap, Trash2, Power, PowerOff, Download } from 'lucide-react'
+import { Brain, ArrowLeft, Upload, MessageSquare, Settings, Key, Eye, EyeOff, Send, FileText, Bot, User, Sliders, Zap, Trash2, Power, PowerOff, Download, RefreshCw } from 'lucide-react'
 
 interface ProcessedMemory {
   id: string
@@ -21,8 +21,24 @@ interface ChatMessage {
   }>
 }
 
+interface PixelogFile {
+  id: string
+  name: string
+  size: string | number
+  created_at: string
+  path: string
+}
+
+interface ProgressUpdate {
+  stage?: string
+  percentage?: number
+  message?: string
+  status?: string
+  job_id?: string
+}
+
 const LLMPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'upload' | 'chat'>('chat')
+  const [activeTab, setActiveTab] = useState<'upload' | 'chat' | 'create'>('upload')
   const [files, setFiles] = useState<File[]>([])
   const [decryptionKey, setDecryptionKey] = useState<string>('')
   const [showKey, setShowKey] = useState<boolean>(false)
@@ -54,6 +70,12 @@ const LLMPage: React.FC = () => {
   const [showExportModal, setShowExportModal] = useState<boolean>(false)
   const [exportEncryptionKey, setExportEncryptionKey] = useState<string>('')
   const [isExporting, setIsExporting] = useState<boolean>(false)
+  
+  // Create tab state
+  const [pixeFiles, setPixeFiles] = useState<PixelogFile[]>([])
+  const [isLoadingFiles, setIsLoadingFiles] = useState<boolean>(false)
+  const [isConverting, setIsConverting] = useState<boolean>(false)
+  const [conversionProgress, setConversionProgress] = useState<ProgressUpdate | null>(null)
 
   // AI Provider configurations - REAL VERIFIED WORKING MODELS
   const aiProviders = {
@@ -211,6 +233,96 @@ const LLMPage: React.FC = () => {
     }
   }
 
+  // Create tab handlers - simplified versions
+  const fetchPixeFiles = async () => {
+    try {
+      setIsLoadingFiles(true)
+      const response = await fetch('http://localhost:8080/api/files')
+      if (response.ok) {
+        const files = await response.json()
+        setPixeFiles(files)
+      }
+    } catch (error) {
+      console.error('Error fetching files:', error)
+    } finally {
+      setIsLoadingFiles(false)
+    }
+  }
+
+  const handleFileDrop = async (files: File[]) => {
+    if (files.length === 0) return
+    
+    setIsConverting(true)
+    setConversionProgress({ stage: 'Converting...', percentage: 50, message: 'Processing files...' })
+    
+    try {
+      const formData = new FormData()
+      files.forEach(file => formData.append('files', file))
+      
+      const response = await fetch('http://localhost:8080/api/convert', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (response.ok) {
+        setConversionProgress({ stage: 'Completed', percentage: 100, message: 'Success!' })
+        setTimeout(() => setConversionProgress(null), 2000)
+        fetchPixeFiles()
+      }
+    } catch (error) {
+      console.error('Error converting:', error)
+      setConversionProgress(null)
+    } finally {
+      setIsConverting(false)
+    }
+  }
+
+  const handleDownloadFile = async (file: PixelogFile) => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/files/${file.id}`)
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.name
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }
+    } catch (error) {
+      console.error('Download error:', error)
+    }
+  }
+
+  const handleDeleteFile = async (fileId: string) => {
+    if (confirm('Delete file?')) {
+      try {
+        await fetch(`http://localhost:8080/api/files/${fileId}`, { method: 'DELETE' })
+        fetchPixeFiles()
+      } catch (error) {
+        console.error('Delete error:', error)
+      }
+    }
+  }
+
+  const handleSendToLLM = (file: PixelogFile) => {
+    const newMemory = {
+      id: file.id,
+      filename: file.name,
+      size: typeof file.size === 'string' ? 0 : file.size,
+      chunks: 1000,
+      status: 'ready',
+      encrypted: false
+    }
+    
+    const updated = [...processedMemories, newMemory]
+    setProcessedMemories(updated)
+    localStorage.setItem('pixelog-llm-memories', JSON.stringify(updated))
+    alert('File added to LLM memories!')
+  }
+
   const processFiles = async () => {
     if (files.length === 0) return
     
@@ -323,12 +435,12 @@ const LLMPage: React.FC = () => {
             <span>Offline context storage for AI memories</span>
           </a>
           <span className="cyber-text-tertiary">•</span>
-          <a 
-            href="/create" 
-            className="cyber-text-secondary hover:cyber-text-primary transition-colors flex items-center gap-2"
+          <button 
+            onClick={() => setActiveTab('create')}
+            className="cyber-text-secondary hover:cyber-text-primary transition-colors flex items-center gap-2 bg-transparent border-none cursor-pointer"
           >
             <span>Convert knowledge to portable .pixe files</span>
-          </a>
+          </button>
         </div>
       </div>
       
@@ -338,12 +450,13 @@ const LLMPage: React.FC = () => {
           {[
             { id: 'chat', label: 'LLM Chat', icon: MessageSquare },
             { id: 'upload', label: 'Upload .pixe Files', icon: Upload },
+            { id: 'create', label: 'Create .pixe Files', icon: Brain },
           ].map((tab) => {
             const Icon = tab.icon
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as 'upload' | 'chat')}
+                onClick={() => setActiveTab(tab.id as 'upload' | 'chat' | 'create')}
                 className={`
                   flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-md transition-all duration-200
                   ${
@@ -727,6 +840,139 @@ const LLMPage: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Create Tab */}
+        {activeTab === 'create' && (
+          <div className="space-y-6 max-w-4xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* File Upload Section */}
+              <div className="cyber-terminal">
+                <div className="cyber-terminal-header">
+                  <h2 className="cyber-h2 text-lg">Upload Files to Convert</h2>
+                </div>
+                <div className="cyber-terminal-body space-y-6">
+                  <div>
+                    <label className="block cyber-body cyber-text-primary mb-3">
+                      <Upload className="w-4 h-4 inline mr-2" />
+                      Select Files to Convert
+                    </label>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={(e) => {
+                        const selectedFiles = Array.from(e.target.files || [])
+                        handleFileDrop(selectedFiles)
+                      }}
+                      className="cyber-input w-full"
+                      disabled={isConverting}
+                    />
+                    <p className="text-xs cyber-text-muted mt-2">
+                      Supports documents, images, videos, and other file types
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* File List Section */}
+              <div className="cyber-terminal">
+                <div className="cyber-terminal-header">
+                  <div className="flex items-center justify-between w-full">
+                    <h2 className="cyber-h2 text-lg">Converted Files</h2>
+                    <button
+                      onClick={fetchPixeFiles}
+                      className="cyber-btn-secondary p-2"
+                      disabled={isLoadingFiles}
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isLoadingFiles ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                </div>
+                <div className="cyber-terminal-body">
+                  {isLoadingFiles ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
+                    </div>
+                  ) : pixeFiles.length === 0 ? (
+                    <div className="text-center py-12 cyber-text-secondary">
+                      <Upload className="w-16 h-16 mx-auto mb-4 cyber-text-tertiary" />
+                      <p className="cyber-h3 text-lg mb-2">No .pixe files yet</p>
+                      <p className="cyber-body text-sm">Convert some files to get started</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {pixeFiles.map((file) => (
+                        <div key={file.id} className="cyber-bg-panel p-4 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Upload className="w-5 h-5 cyber-text-blue" />
+                              <div>
+                                <h3 className="cyber-body cyber-text-primary font-medium">{file.name}</h3>
+                                <p className="cyber-mono text-xs cyber-text-secondary">
+                                  {typeof file.size === 'string' ? file.size : `${file.size} bytes`} • {new Date(file.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleSendToLLM(file)}
+                                className="cyber-btn p-2"
+                                title="Send to LLM"
+                              >
+                                <Brain className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDownloadFile(file)}
+                                className="cyber-btn-secondary p-2"
+                                title="Download file"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteFile(file.id)}
+                                className="cyber-btn-danger p-2"
+                                title="Delete file"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Conversion Progress */}
+            {conversionProgress && (
+              <div className="cyber-terminal">
+                <div className="cyber-terminal-header">
+                  <h3 className="cyber-h3">Converting Files...</h3>
+                </div>
+                <div className="cyber-terminal-body">
+                  <div className="space-y-2">
+                    <div className="flex justify-between cyber-body">
+                      <span>{conversionProgress.stage || 'Processing'}</span>
+                      <span>{conversionProgress.percentage || 0}%</span>
+                    </div>
+                    <div className="cyber-bg-void rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-300"
+                        style={{ width: `${conversionProgress.percentage || 0}%` }}
+                      />
+                    </div>
+                    {conversionProgress.message && (
+                      <p className="cyber-mono text-xs cyber-text-secondary">
+                        {conversionProgress.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
