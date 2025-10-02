@@ -407,7 +407,7 @@ const LLMPage: React.FC = () => {
 
   const sendMessage = async () => {
     const connectedMemoryIds = Array.from(connectedMemories)
-    if (!chatInput.trim() || connectedMemoryIds.length === 0 || !apiKey.trim()) return
+    if (!chatInput.trim() || !apiKey.trim()) return
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
