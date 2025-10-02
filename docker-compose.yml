@@ -7,6 +7,11 @@ services:
       - "8080:8080"
     environment:
       - PORT=8080
+      # Optional: Add your AI provider API keys
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      # - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
     volumes:
       - pixelog_data:/app/output
     healthcheck:

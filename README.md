@@ -19,7 +19,9 @@
 - **Portable & Streamable** - Access your knowledge anywhere
 - **Drag & Drop Interface** - Intuitive web-based GUI
 - **Real-time Progress** - WebSocket-powered conversion tracking
-- **Semantic Search** - AI-powered content discovery with OpenAI embeddings
+- **LLM Chat Interface** - Chat with your memories using multiple AI providers
+- **Multi-Provider AI Support** - OpenAI, Anthropic, Google Gemini, OpenRouter
+- **Semantic Search** - AI-powered content discovery with multiple embedding providers
 - **PWA Ready** - Install as desktop/mobile app
 - **Docker Support** - One-command deployment
 - **CLI Tool** - Command-line interface for automation
@@ -32,8 +34,11 @@
 git clone https://github.com/ArqonAi/Pixelog.git
 cd Pixelog
 
-# Optional: Enable semantic search with OpenAI API
-export OPENAI_API_KEY="your-api-key-here"
+# Optional: Enable AI features (choose your provider)
+export OPENAI_API_KEY="your-openai-key-here"
+# OR export ANTHROPIC_API_KEY="your-anthropic-key-here"  
+# OR export GOOGLE_API_KEY="your-gemini-key-here"
+# OR export OPENROUTER_API_KEY="your-openrouter-key-here"
 
 go run backend/cmd/server/main.go -dev
 
@@ -91,6 +96,36 @@ go build -o pixelog backend/cmd/pixelog/main.go
 4. **Compression** - Silent audio track + fast-start optimization
 5. **Storage** - Portable .pixe files ready for streaming/sharing
 6. **Search Indexing** - Text extracted and vectorized for semantic search
+
+## 💬 LLM Chat Interface
+
+Pixelog features a powerful chat interface that lets you converse with your stored memories using state-of-the-art language models.
+
+### Supported AI Providers
+
+**🤖 OpenAI**
+- GPT-4o, GPT-4o-mini, GPT-4-turbo, GPT-4, GPT-3.5-turbo
+- Industry-leading performance and reasoning capabilities
+
+**🎭 Anthropic**  
+- Claude 3.5 Sonnet, Claude 3.5 Haiku, Claude 3 Opus, Claude 3 Haiku
+- Advanced reasoning with strong safety focus
+
+**🌟 Google Gemini**
+- Gemini 2.5 Flash, Gemini 2.0 Flash, Gemini 1.5 Pro, Gemini 1.5 Flash  
+- Multimodal capabilities and fast inference
+
+**🌐 OpenRouter**
+- Access 30+ models through unified API: DeepSeek, Moonshot, Mistral, and more
+- Cost-effective access to multiple providers
+
+### Chat Features
+
+- **Memory Integration** - Chat with uploaded .pixe files as context
+- **Export Conversations** - Save chats as .pixe files or text
+- **Right-aligned UI** - Modern chat interface with user messages on right
+- **Clickable Send** - Both Enter key and button click support
+- **Tab-based Interface** - Seamless switching between chat, upload, and create
 
 ## 🔍 Semantic Search
 
