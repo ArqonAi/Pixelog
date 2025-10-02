@@ -641,31 +641,42 @@ const LLMPage: React.FC = () => {
                     </p>
                   </div>
                 ) : (
-                  chatMessages.map((message) => (
-                    <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-start' : 'justify-start'} mb-6`}>
-                      <div className={`
-                        ${message.type === 'user' 
-                          ? 'w-full cyber-text-primary' 
-                          : 'max-w-[85%] min-w-[200px] rounded-xl p-5 shadow-lg cyber-bg-panel border border-gray-600/40 cyber-text-primary'
-                        }
-                      `}>
-                        <p className="cyber-body">{message.content}</p>
-                        {message.sources && (
-                          <div className="mt-3 pt-3 border-t border-gray-700/50">
-                            <p className="cyber-mono text-xs cyber-text-secondary mb-2">Sources:</p>
-                            {message.sources.map((source, idx) => (
-                              <div key={idx} className="flex items-center justify-between cyber-mono text-xs mb-1">
-                                <span className="cyber-text-primary">{source.filename}</span>
-                                <span className="cyber-text-secondary">
-                                  Frame {source.frame_number} • {(source.relevance * 100).toFixed(0)}% match
-                                </span>
+                  <div className="space-y-4 mb-4">
+                    {chatMessages.map((msg, index) => (
+                      <div key={msg.id || index} className={`flex gap-3 ${
+                        msg.type === 'user' ? 'justify-end' : 'justify-start'
+                      }`}>
+                        {msg.type !== 'user' && (
+                          <div className="flex-shrink-0">
+                            <Bot className="w-6 h-6 cyber-text-accent" />
+                          </div>
+                        )}
+                        <div className={`max-w-[80%] min-w-0 ${
+                          msg.type === 'user' ? 'order-1' : 'order-2'
+                        }`}>
+                          <div className={`inline-block px-4 py-3 rounded-lg ${
+                            msg.type === 'user' 
+                              ? 'bg-cyan-500/20 cyber-text-primary border border-cyan-500/30 rounded-br-sm' 
+                              : 'cyber-bg-secondary cyber-text-secondary border border-gray-700 rounded-bl-sm'
+                          }`}>
+                            <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                              {msg.content}
+                            </div>
+                            {msg.sources && msg.sources.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-gray-600">
+                                <div className="text-xs cyber-text-muted">Sources: {msg.sources.length}</div>
                               </div>
-                            ))}
+                            )}
+                          </div>
+                        </div>
+                        {msg.type === 'user' && (
+                          <div className="flex-shrink-0 order-2">
+                            <User className="w-6 h-6 cyber-text-primary" />
                           </div>
                         )}
                       </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
                 
                 {isThinking && (
@@ -681,6 +692,14 @@ const LLMPage: React.FC = () => {
               </div>
               
               {/* Message Input */}
+              <div className="relative">
+                <textarea
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      sendMessage()
               <div className="border-t border-gray-700/50 p-4 bg-gray-900/20">
                 <div className="flex gap-3">
                   <div className="flex-1 relative">
