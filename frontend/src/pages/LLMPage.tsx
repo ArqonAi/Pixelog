@@ -136,6 +136,35 @@ const LLMPage: React.FC = () => {
       ],
       keyPlaceholder: 'sk-or-...',
       website: 'https://openrouter.ai/keys'
+    },
+    grok: {
+      name: 'xAI Grok',
+      models: [
+        'grok-2-1212',
+        'grok-2-vision-1212',
+        'grok-2-latest',
+        'grok-vision-beta',
+        'grok-beta'
+      ],
+      keyPlaceholder: 'xai-...',
+      website: 'https://console.x.ai/'
+    },
+    ollama: {
+      name: 'Ollama (Local)',
+      models: [
+        'llama3.1:8b',
+        'llama3.1:70b',
+        'llama3.2:3b',
+        'llama3.2:1b',
+        'mistral:7b',
+        'codellama:7b',
+        'codellama:13b',
+        'phi3:mini',
+        'gemma2:9b',
+        'qwen2.5:7b'
+      ],
+      keyPlaceholder: 'No API key needed',
+      website: 'https://ollama.com/'
     }
   }
 
@@ -407,7 +436,9 @@ const LLMPage: React.FC = () => {
 
   const sendMessage = async () => {
     const connectedMemoryIds = Array.from(connectedMemories)
-    if (!chatInput.trim() || !apiKey.trim()) return
+    // Ollama doesn't need an API key, all others do
+    const needsApiKey = selectedProvider !== 'ollama'
+    if (!chatInput.trim() || (needsApiKey && !apiKey.trim())) return
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -437,7 +468,7 @@ const LLMPage: React.FC = () => {
           memory_ids: connectedMemoryIds,
           provider: selectedProvider,
           model: selectedModel,
-          api_key: apiKey
+          api_key: selectedProvider === 'ollama' ? '' : apiKey
         })
       })
 
@@ -763,18 +794,22 @@ const LLMPage: React.FC = () => {
                     <div className="relative">
                       <input
                         type={showApiKey ? 'text' : 'password'}
-                        value={apiKey}
+                        value={selectedProvider === 'ollama' ? 'Local - No API Key Required' : apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
                         placeholder={aiProviders[selectedProvider as keyof typeof aiProviders]?.keyPlaceholder}
-                        className="cyber-input w-full pr-10"
+                        className={`cyber-input w-full pr-10 ${selectedProvider === 'ollama' ? 'bg-gray-800/50 cursor-not-allowed' : ''}`}
+                        disabled={selectedProvider === 'ollama'}
+                        readOnly={selectedProvider === 'ollama'}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 cyber-text-secondary hover:cyber-text-primary"
-                      >
-                        {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
+                      {selectedProvider !== 'ollama' && (
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 cyber-text-secondary hover:cyber-text-primary"
+                        >
+                          {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
