@@ -36,9 +36,10 @@ type Handler struct {
 }
 
 type ConvertRequest struct {
-	Quality   int     `json:"quality" form:"quality"`
-	FrameRate float64 `json:"framerate" form:"framerate"`
-	ChunkSize int     `json:"chunksize" form:"chunksize"`
+	Quality            int     `json:"quality" form:"quality"`
+	FrameRate          float64 `json:"framerate" form:"framerate"`
+	ChunkSize          int     `json:"chunksize" form:"chunksize"`
+	EncryptionPassword string  `json:"encryption_password" form:"encryption_password"`
 }
 
 type ConvertResponse struct {
@@ -264,7 +265,7 @@ func (h *Handler) ConvertFile(c *gin.Context) {
 			}
 		}
 
-		err := h.converter.Convert(inputPath, outputPath, progressChan)
+		err := h.converter.Convert(inputPath, outputPath, progressChan, req.EncryptionPassword)
 		if err != nil {
 			fmt.Printf("Conversion error for job %s: %v\n", jobID, err)
 		} else {
@@ -686,11 +687,12 @@ func (h *Handler) ProcessLLMMemories(c *gin.Context) {
 
 // LLM Chat endpoint
 type ChatRequest struct {
-	Query     string   `json:"query"`
-	MemoryIDs []string `json:"memory_ids"`
-	Provider  string   `json:"provider"`
-	Model     string   `json:"model"`
-	APIKey    string   `json:"api_key"`
+	Query              string   `json:"query"`
+	MemoryIDs          []string `json:"memory_ids"`
+	Provider           string   `json:"provider"`
+	Model              string   `json:"model"`
+	APIKey             string   `json:"api_key"`
+	DecryptionPassword string   `json:"decryption_password,omitempty"`
 }
 
 type ChatResponse struct {
@@ -764,7 +766,7 @@ func (h *Handler) LLMChat(c *gin.Context) {
 			}
 			defer os.RemoveAll(tempDir)
 			
-			err = h.converter.Extract(filePath, tempDir)
+			err = h.converter.Extract(filePath, tempDir, req.DecryptionPassword)
 			if err != nil {
 				fmt.Printf("Error extracting content from %s: %v\n", filePath, err)
 				continue

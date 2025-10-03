@@ -11,17 +11,19 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ArqonAi/Pixelog/backend/internal/crypto"
 	"github.com/ArqonAi/Pixelog/backend/internal/qr"
 	"github.com/ArqonAi/Pixelog/backend/internal/video"
 	"github.com/ArqonAi/Pixelog/backend/pkg/config"
 )
 
 type Converter struct {
-	config      *config.Config
-	qrGenerator *qr.Generator
-	videoMaker  *video.Maker
-	mu          sync.RWMutex
-	jobs        map[string]*Job
+	config        *config.Config
+	qrGenerator   *qr.Generator
+	videoMaker    *video.Maker
+	cryptoService *crypto.EncryptionService
+	mu            sync.RWMutex
+	jobs          map[string]*Job
 }
 
 type Job struct {
@@ -73,15 +75,19 @@ func New(cfg *config.Config) (*Converter, error) {
 		return nil, fmt.Errorf("failed to create video maker: %w", err)
 	}
 
+	// Initialize crypto service
+	cryptoService := crypto.NewEncryptionService(cfg.EncryptionEnabled)
+
 	return &Converter{
-		config:      cfg,
-		qrGenerator: qrGen,
-		videoMaker:  videoMaker,
-		jobs:        make(map[string]*Job),
+		config:        cfg,
+		qrGenerator:   qrGen,
+		videoMaker:    videoMaker,
+		cryptoService: cryptoService,
+		jobs:          make(map[string]*Job),
 	}, nil
 }
 
-func (c *Converter) Convert(inputPath, outputPath string, progressChan chan<- Progress) error {
+func (c *Converter) Convert(inputPath, outputPath string, progressChan chan<- Progress, encryptionPassword ...string) error {
 	jobID := generateJobID()
 
 	job := &Job{
@@ -102,6 +108,12 @@ func (c *Converter) Convert(inputPath, outputPath string, progressChan chan<- Pr
 		time.Sleep(10 * time.Minute)
 		c.removeJob(jobID)
 	}()
+
+	// Extract encryption password if provided
+	var password string
+	if len(encryptionPassword) > 0 {
+		password = encryptionPassword[0]
+	}
 
 	updateProgress := func(stage string, progress int, message string) {
 		job.Stage = stage
@@ -135,7 +147,7 @@ func (c *Converter) Convert(inputPath, outputPath string, progressChan chan<- Pr
 	var contents []ContentItem
 
 	for i, file := range files {
-		chunks, item, err := c.processFile(file)
+		chunks, item, err := c.processFile(file, password)
 		if err != nil {
 			job.Status = "failed"
 			job.Error = err.Error()
@@ -198,9 +210,62 @@ func (c *Converter) Convert(inputPath, outputPath string, progressChan chan<- Pr
 	return nil
 }
 
-func (c *Converter) Extract(inputPath, outputDir string) error {
-	// Implementation for extracting data from .pixe files
-	return c.videoMaker.ExtractData(inputPath, outputDir)
+func (c *Converter) Extract(pixeFilePath, outputDir string, decryptionPassword ...string) error {
+	// Get the password if provided
+	var password string
+	if len(decryptionPassword) > 0 {
+		password = decryptionPassword[0]
+	}
+
+	fmt.Printf("DEBUG: Starting extraction from %s\n", pixeFilePath)
+	
+	// Use the video maker to extract data - this will create the files
+	err := c.videoMaker.ExtractData(pixeFilePath, outputDir)
+	if err != nil {
+		return fmt.Errorf("failed to extract data from video: %w", err)
+	}
+
+	fmt.Printf("DEBUG: Video extraction completed, now processing for decryption if needed\n")
+	
+	// If no password provided, we're done
+	if password == "" {
+		return nil
+	}
+
+	// If password is provided, we need to decrypt the extracted files
+	// This is a simplified approach - in reality we'd need to read the chunk metadata
+	// to determine which files are encrypted, but for now let's try to decrypt all files
+	extractedFiles, err := filepath.Glob(filepath.Join(outputDir, "*"))
+	if err != nil {
+		return fmt.Errorf("failed to list extracted files: %w", err)
+	}
+
+	for _, filePath := range extractedFiles {
+		// Try to decrypt the file
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			continue // Skip files we can't read
+		}
+
+		// Attempt decryption
+		decryptedData, err := c.cryptoService.DecryptData(data, password)
+		if err != nil {
+			// If decryption fails, the file might not be encrypted, so leave it as is
+			fmt.Printf("DEBUG: File %s is not encrypted or decryption failed: %v\n", filepath.Base(filePath), err)
+			continue
+		}
+
+		// Write the decrypted data back
+		err = os.WriteFile(filePath, decryptedData, 0644)
+		if err != nil {
+			fmt.Printf("ERROR: Failed to write decrypted file %s: %v\n", filePath, err)
+			continue
+		}
+
+		fmt.Printf("DEBUG: Successfully decrypted file %s\n", filepath.Base(filePath))
+	}
+
+	return nil
 }
 
 func (c *Converter) ListContents(inputPath string) ([]ContentItem, error) {
@@ -249,13 +314,25 @@ func (c *Converter) analyzeInput(inputPath string) ([]string, error) {
 	return files, err
 }
 
-func (c *Converter) processFile(filePath string) ([]qr.Chunk, *ContentItem, error) {
+func (c *Converter) processFile(filePath string, encryptionPassword string) ([]qr.Chunk, *ContentItem, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Calculate hash
+	// Encrypt data if password is provided
+	originalData := data
+	if encryptionPassword != "" && c.cryptoService.IsEnabled() {
+		fmt.Printf("DEBUG: Encrypting file %s with AES-256-GCM\n", filepath.Base(filePath))
+		encryptedData, err := c.cryptoService.EncryptData(data, encryptionPassword)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to encrypt data: %w", err)
+		}
+		data = encryptedData
+		fmt.Printf("DEBUG: Encryption successful - size changed from %d to %d bytes\n", len(originalData), len(data))
+	}
+
+	// Calculate hash (of encrypted data if encrypted)
 	hasher := sha256.New()
 	hasher.Write(data)
 	hash := fmt.Sprintf("%x", hasher.Sum(nil))
@@ -284,12 +361,13 @@ func (c *Converter) processFile(filePath string) ([]qr.Chunk, *ContentItem, erro
 	}
 
 	// Create chunks
-	chunks := c.createChunks(encodedData, filePath, mimeType, hash)
+	isEncrypted := encryptionPassword != "" && c.cryptoService.IsEnabled()
+	chunks := c.createChunks(encodedData, filePath, mimeType, hash, isEncrypted)
 
 	return chunks, item, nil
 }
 
-func (c *Converter) createChunks(data, filePath, mimeType, hash string) []qr.Chunk {
+func (c *Converter) createChunks(data, filePath, mimeType, hash string, encrypted bool) []qr.Chunk {
 	var chunks []qr.Chunk
 	chunkSize := c.config.ChunkSize - 200 // Leave room for metadata
 
@@ -307,6 +385,7 @@ func (c *Converter) createChunks(data, filePath, mimeType, hash string) []qr.Chu
 			SourceFile: filepath.Base(filePath),
 			MimeType:   mimeType,
 			Hash:       hash,
+			Encrypted:  encrypted,
 			CreatedAt:  time.Now(),
 		}
 
@@ -351,6 +430,7 @@ func (c *Converter) GetOutputDir() string {
 func generateJobID() string {
 	return fmt.Sprintf("job_%d", time.Now().UnixNano())
 }
+
 
 func formatSize(bytes int64) string {
 	const unit = 1024

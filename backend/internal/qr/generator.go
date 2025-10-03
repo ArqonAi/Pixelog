@@ -24,6 +24,7 @@ type Chunk struct {
 	SourceFile string    `json:"source_file"`
 	MimeType   string    `json:"mime_type"`
 	Hash       string    `json:"hash"`
+	Encrypted  bool      `json:"encrypted"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 
