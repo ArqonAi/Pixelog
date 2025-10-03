@@ -727,27 +727,65 @@ func (h *Handler) LLMChat(c *gin.Context) {
 		for _, memoryID := range req.MemoryIDs {
 			var filePath string
 			
+			// Get current working directory for debugging
+			cwd, _ := os.Getwd()
+			fmt.Printf("DEBUG: Current working directory: %s\n", cwd)
+			fmt.Printf("DEBUG: Looking for memory ID: %s\n", memoryID)
+			fmt.Printf("DEBUG: Output directory from converter: %s\n", outputDir)
+			
 			// Try multiple paths to find the file
 			filePath = filepath.Join(outputDir, memoryID+".pixe")
+			fmt.Printf("DEBUG: Trying path 1: %s\n", filePath)
 			if _, err := os.Stat(filePath); err != nil {
-				filePath = filepath.Join("./output", memoryID+".pixe")
+				filePath = filepath.Join("../output", memoryID+".pixe")  // Go up one level from backend/ to pixelog/output/
+				fmt.Printf("DEBUG: Trying path 2: %s\n", filePath)
 				if _, err := os.Stat(filePath); err != nil {
-					filePath = filepath.Join("output", memoryID+".pixe")
+					filePath = filepath.Join("./output", memoryID+".pixe")
+					fmt.Printf("DEBUG: Trying path 3: %s\n", filePath)
 					if _, err := os.Stat(filePath); err != nil {
-						continue // Skip if file not found
+						filePath = filepath.Join("output", memoryID+".pixe")
+						fmt.Printf("DEBUG: Trying path 4: %s\n", filePath)
+						if _, err := os.Stat(filePath); err != nil {
+							fmt.Printf("DEBUG: File not found in any path for memory ID: %s\n", memoryID)
+							continue // Skip if file not found
+						}
 					}
 				}
 			}
+			fmt.Printf("DEBUG: Found file at: %s\n", filePath)
 
-			// Extract QR-encoded content from .pixe file
-			fileContent, err := h.extractPixeContent(filePath)
+			fmt.Printf("DEBUG: Attempting to extract content from: %s\n", filePath)
+			
+			// Use converter's Extract method to extract content to temporary directory
+			tempDir, err := os.MkdirTemp("", "pixelog-extract-*")
+			if err != nil {
+				fmt.Printf("Error creating temp dir for %s: %v\n", filePath, err)
+				continue
+			}
+			defer os.RemoveAll(tempDir)
+			
+			err = h.converter.Extract(filePath, tempDir)
 			if err != nil {
 				fmt.Printf("Error extracting content from %s: %v\n", filePath, err)
 				continue
 			}
-
-			if len(fileContent) > 0 {
-				extractedContent = append(extractedContent, fmt.Sprintf("File %s:\n%s", memoryID, fileContent))
+			
+			// Read all extracted files and combine their content
+			var fileContent strings.Builder
+			extractedFiles, _ := filepath.Glob(filepath.Join(tempDir, "*"))
+			for _, extractedFile := range extractedFiles {
+				content, err := os.ReadFile(extractedFile)
+				if err != nil {
+					continue
+				}
+				fileContent.WriteString(fmt.Sprintf("=== %s ===\n%s\n\n", filepath.Base(extractedFile), string(content)))
+			}
+			
+			if fileContent.Len() > 0 {
+				extractedContent = append(extractedContent, fmt.Sprintf("File %s:\n%s", memoryID, fileContent.String()))
+				fmt.Printf("DEBUG: Successfully extracted %d characters from %s\n", fileContent.Len(), memoryID)
+			} else {
+				fmt.Printf("DEBUG: No content extracted from %s\n", memoryID)
 			}
 		}
 
@@ -1338,8 +1376,17 @@ func (h *Handler) extractPixeContent(filePath string) (string, error) {
 
 	// Extract frames from .pixe video using FFmpeg
 	framePattern := filepath.Join(tempDir, "frame_%05d.png")
-	cmd := exec.Command("ffmpeg", "-i", filePath, "-vf", "fps=1", framePattern)
+	cmd := exec.Command("ffmpeg", "-y", "-i", filePath, "-vf", "fps=1", framePattern)
+	
+	// Capture both stdout and stderr for debugging
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	
+	fmt.Printf("Running FFmpeg command: %v\n", cmd.Args)
 	if err := cmd.Run(); err != nil {
+		fmt.Printf("FFmpeg stdout: %s\n", stdout.String())
+		fmt.Printf("FFmpeg stderr: %s\n", stderr.String())
 		return "", fmt.Errorf("failed to extract frames from .pixe file: %w", err)
 	}
 
