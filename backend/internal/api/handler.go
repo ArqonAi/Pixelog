@@ -1400,20 +1400,25 @@ func (h *Handler) extractPixeContent(filePath string) (string, error) {
 		return "", fmt.Errorf("no frames extracted from .pixe video")
 	}
 
+	fmt.Printf("DEBUG: Extracted %d frames from video\n", len(frameFiles))
+
 	// Sort frames by filename to ensure correct order
 	sort.Strings(frameFiles)
 
 	// Decode QR codes from each frame
 	var allChunks []qr.Chunk
-	for _, frameFile := range frameFiles {
-		chunk, err := h.decodeQRFromFrame(frameFile)
+	for i, frameFile := range frameFiles {
+		fmt.Printf("DEBUG: Processing frame %d/%d: %s\n", i+1, len(frameFiles), frameFile)
+		chunk, err := qr.DecodeFrame(frameFile)
 		if err != nil {
-			// Skip frames that don't contain valid QR codes
+			fmt.Printf("DEBUG: Failed to decode QR from frame %s: %v\n", frameFile, err)
 			continue  
 		}
+		fmt.Printf("DEBUG: Successfully decoded QR chunk %d from frame %s\n", chunk.Index, frameFile)
 		allChunks = append(allChunks, *chunk)
 	}
 
+	fmt.Printf("DEBUG: Successfully decoded %d QR chunks out of %d frames\n", len(allChunks), len(frameFiles))
 	if len(allChunks) == 0 {
 		return "", fmt.Errorf("no valid QR codes found in .pixe frames")
 	}

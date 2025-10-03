@@ -3,10 +3,14 @@ package qr
 import (
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/png"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/makiuchi-d/gozxing"
+	qrReader "github.com/makiuchi-d/gozxing/qrcode"
 	"github.com/skip2/go-qrcode"
 )
 
@@ -78,7 +82,36 @@ func (g *Generator) GenerateFrame(chunk Chunk, frameNumber int) (string, error) 
 }
 
 func DecodeFrame(imagePath string) (*Chunk, error) {
-	// This would require a QR code reader library
-	// For now, we'll implement a placeholder
-	return nil, fmt.Errorf("QR decode not implemented yet")
+	// Use gozxing for decoding (matches the API handler)
+	file, err := os.Open(imagePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open image: %w", err)
+	}
+	defer file.Close()
+
+	// Decode image
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode image: %w", err)
+	}
+
+	// Create bitmap and decode QR
+	bmp, err := gozxing.NewBinaryBitmapFromImage(img)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create bitmap: %w", err)
+	}
+
+	reader := qrReader.NewQRCodeReader()
+	result, err := reader.Decode(bmp, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode QR code: %w", err)
+	}
+
+	// Parse chunk data
+	var chunk Chunk
+	if err := json.Unmarshal([]byte(result.GetText()), &chunk); err != nil {
+		return nil, fmt.Errorf("failed to parse chunk JSON: %w", err)
+	}
+
+	return &chunk, nil
 }
