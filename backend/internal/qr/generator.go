@@ -3,14 +3,12 @@ package qr
 import (
 	"encoding/json"
 	"fmt"
-	"image"
-	_ "image/png"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
-	"github.com/makiuchi-d/gozxing"
-	qrReader "github.com/makiuchi-d/gozxing/qrcode"
 	"github.com/skip2/go-qrcode"
 )
 
@@ -82,35 +80,68 @@ func (g *Generator) GenerateFrame(chunk Chunk, frameNumber int) (string, error) 
 }
 
 func DecodeFrame(imagePath string) (*Chunk, error) {
-	// Use gozxing for decoding (matches the API handler)
-	file, err := os.Open(imagePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open image: %w", err)
-	}
-	defer file.Close()
+	// Use OpenCV via Python script for reliable QR decoding (like memvid)
+	pythonScript := `
+import cv2
+import sys
+import json
 
-	// Decode image
-	img, _, err := image.Decode(file)
+try:
+    # Load image
+    img = cv2.imread(sys.argv[1])
+    if img is None:
+        print("ERROR: Could not load image", file=sys.stderr)
+        sys.exit(1)
+    
+    # Create QR detector
+    qcd = cv2.QRCodeDetector()
+    
+    # Detect and decode QR codes
+    retval, decoded_info, points, straight_qrcode = qcd.detectAndDecodeMulti(img)
+    
+    # Check if any QR codes were found
+    if not retval or not decoded_info:
+        print("ERROR: No QR codes found", file=sys.stderr)
+        sys.exit(1)
+    
+    # Find the first non-empty decoded QR code
+    for data in decoded_info:
+        if data.strip():
+            print(data)
+            sys.exit(0)
+    
+    print("ERROR: All QR codes were empty", file=sys.stderr)
+    sys.exit(1)
+    
+except Exception as e:
+    print(f"ERROR: {e}", file=sys.stderr)
+    sys.exit(1)
+`
+
+	// Write Python script to temp file
+	tempScript := "/tmp/qr_decode.py"
+	if err := os.WriteFile(tempScript, []byte(pythonScript), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write Python script: %w", err)
+	}
+	defer os.Remove(tempScript)
+
+	// Execute Python script with OpenCV
+	cmd := exec.Command("python3", tempScript, imagePath)
+	output, err := cmd.CombinedOutput()
+	
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode image: %w", err)
+		return nil, fmt.Errorf("failed to decode QR with OpenCV: %v, output: %s", err, string(output))
 	}
 
-	// Create bitmap and decode QR
-	bmp, err := gozxing.NewBinaryBitmapFromImage(img)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create bitmap: %w", err)
+	// Parse the JSON output
+	qrData := strings.TrimSpace(string(output))
+	if qrData == "" {
+		return nil, fmt.Errorf("empty QR data returned")
 	}
 
-	reader := qrReader.NewQRCodeReader()
-	result, err := reader.Decode(bmp, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode QR code: %w", err)
-	}
-
-	// Parse chunk data
 	var chunk Chunk
-	if err := json.Unmarshal([]byte(result.GetText()), &chunk); err != nil {
-		return nil, fmt.Errorf("failed to parse chunk JSON: %w", err)
+	if err := json.Unmarshal([]byte(qrData), &chunk); err != nil {
+		return nil, fmt.Errorf("failed to parse chunk JSON: %w, data: %s", err, qrData)
 	}
 
 	return &chunk, nil
