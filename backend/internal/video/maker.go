@@ -167,10 +167,44 @@ func (m *Maker) ExtractData(inputPath, outputDir string) error {
 			return chunks[i].Index < chunks[j].Index
 		})
 
-		// Verify we have all chunks
+		// Verify we have all chunks and check for index consistency
+		if len(chunks) == 0 {
+			return fmt.Errorf("no chunks found")
+		}
+		
 		firstChunk := chunks[0]
-		if len(chunks) != firstChunk.Total {
-			return fmt.Errorf("missing chunks for file %s: have %d, need %d", firstChunk.SourceFile, len(chunks), firstChunk.Total)
+		expectedTotal := firstChunk.Total
+		actualTotal := len(chunks)
+		
+		fmt.Printf("DEBUG: Chunk validation - Expected: %d, Actual: %d\n", expectedTotal, actualTotal)
+		
+		// Check if all chunk indices are present (0-based indexing) and deduplicate
+		indexMap := make(map[int]bool)
+		uniqueChunks := make(map[int]qr.Chunk)
+		for _, chunk := range chunks {
+			fmt.Printf("DEBUG: Chunk %d/%d: Index=%d, Data length=%d\n", chunk.Index, chunk.Total, chunk.Index, len(chunk.Data))
+			indexMap[chunk.Index] = true
+			uniqueChunks[chunk.Index] = chunk // This automatically deduplicates by index
+		}
+		
+		// Replace chunks with deduplicated version
+		chunks = make([]qr.Chunk, 0, len(uniqueChunks))
+		for i := 0; i < expectedTotal; i++ {
+			if chunk, exists := uniqueChunks[i]; exists {
+				chunks = append(chunks, chunk)
+			}
+		}
+		
+		// Verify all indices from 0 to Total-1 are present
+		for i := 0; i < expectedTotal; i++ {
+			if !indexMap[i] {
+				return fmt.Errorf("missing chunk index %d for file %s", i, firstChunk.SourceFile)
+			}
+		}
+		
+		if actualTotal != expectedTotal {
+			fmt.Printf("DEBUG: Chunk count mismatch for %s - this might be OK if chunks are duplicated\n", firstChunk.SourceFile)
+			// Instead of failing, let's use only the unique chunks we need
 		}
 
 		// Reassemble file data
