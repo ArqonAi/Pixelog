@@ -20,7 +20,7 @@
 - **Drag & Drop Interface** - Intuitive web-based GUI
 - **Real-time Progress** - WebSocket-powered conversion tracking
 - **LLM Chat Interface** - Chat with your memories using multiple AI providers
-- **Multi-Provider AI Support** - OpenAI, Anthropic, Google Gemini, OpenRouter
+- **Multi-Provider AI Support** - OpenAI, Anthropic, Google Gemini, OpenRouter, xAI Grok, Ollama
 - **Semantic Search** - AI-powered content discovery with multiple embedding providers
 - **PWA Ready** - Install as desktop/mobile app
 - **Docker Support** - One-command deployment
@@ -39,6 +39,8 @@ export OPENAI_API_KEY="your-openai-key-here"
 # OR export ANTHROPIC_API_KEY="your-anthropic-key-here"  
 # OR export GOOGLE_API_KEY="your-gemini-key-here"
 # OR export OPENROUTER_API_KEY="your-openrouter-key-here"
+# OR export XAI_API_KEY="your-grok-key-here"
+# OR run Ollama locally (no API key needed)
 
 go run backend/cmd/server/main.go -dev
 
@@ -119,6 +121,14 @@ Pixelog features a powerful chat interface that lets you converse with your stor
 - Access 30+ models through unified API: DeepSeek, Moonshot, Mistral, and more
 - Cost-effective access to multiple providers
 
+**🤖 xAI Grok**
+- Grok-2, Grok-1.5V, Grok-1 models with real-time data access
+- Witty and conversational AI with up-to-date knowledge
+
+**🦙 Ollama (Local)**
+- Run models locally without API keys: Llama, Mistral, CodeLlama, and more
+- Privacy-focused with no external API calls required
+
 ### Chat Features
 
 - **Memory Integration** - Chat with uploaded .pixe files as context
@@ -166,7 +176,6 @@ go run backend/cmd/server/main.go
 
 **Option 3: xAI Grok**
 ```bash
-{{ ... }}
 export XAI_API_KEY="xai-your-grok-key-here"
 export EMBEDDING_PROVIDER="grok"
 go run backend/cmd/server/main.go
@@ -178,7 +187,6 @@ export OPENROUTER_API_KEY="sk-or-your-key-here"
 export OPENROUTER_MODEL="text-embedding-3-small"  # or any supported model
 export EMBEDDING_PROVIDER="openrouter"
 go run backend/cmd/server/main.go
-{{ ... }}
 ```
 
 **Option 5: Local Ollama (No API Key Required)**

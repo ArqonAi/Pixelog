@@ -953,6 +953,8 @@ func (h *Handler) callLLMProvider(provider, model, apiKey, prompt string) (strin
 		return h.callGoogleAI(model, apiKey, prompt)
 	case "anthropic":
 		return h.callAnthropic(model, apiKey, prompt)
+	case "grok", "xai":
+		return h.callGrok(model, apiKey, prompt)
 	case "ollama":
 		return h.callOllama(model, prompt)
 	default:
@@ -1308,6 +1310,75 @@ func (h *Handler) callOllama(model, prompt string) (string, error) {
 	}
 
 	return responseText, nil
+}
+
+func (h *Handler) callGrok(model, apiKey, prompt string) (string, error) {
+	// xAI Grok API implementation
+	reqBody := map[string]interface{}{
+		"messages": []map[string]string{
+			{"role": "user", "content": prompt},
+		},
+		"model": model,
+		"stream": false,
+		"temperature": 0.7,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", "https://api.x.ai/v1/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var response map[string]interface{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("xAI Grok API error: %s", string(body))
+	}
+
+	choices, ok := response["choices"].([]interface{})
+	if !ok || len(choices) == 0 {
+		return "", fmt.Errorf("invalid response format")
+	}
+
+	firstChoice, ok := choices[0].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid choice format")
+	}
+
+	message, ok := firstChoice["message"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid message format")
+	}
+
+	content, ok := message["content"].(string)
+	if !ok {
+		return "", fmt.Errorf("invalid content format")
+	}
+
+	return content, nil
 }
 
 // ===== REAL CLOUD STORAGE HANDLERS =====
