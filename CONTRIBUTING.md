@@ -13,16 +13,6 @@ We welcome contributions to Pixe-Core! This document provides guidelines for con
 - [Code Style](#code-style)
 - [Security](#security)
 
-## Code of Conduct
-
-By participating in this project, you agree to abide by our Code of Conduct:
-
-- Use welcoming and inclusive language
-- Be respectful of differing viewpoints and experiences
-- Gracefully accept constructive criticism
-- Focus on what is best for the community
-- Show empathy towards other community members
-
 ## Getting Started
 
 1. **Fork the repository** on GitHub
