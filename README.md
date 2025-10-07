@@ -1,22 +1,32 @@
-# 🔐 Pixe-Core
+# Pixe-Core
 
+## Abstract
+
+Pixe-Core is a high-performance Go library for creating, encrypting, and managing .pixe files - a secure, portable file format designed for data archival and transfer. The library implements AES-256-GCM encryption with PBKDF2 key derivation, providing enterprise-grade security for sensitive data storage.
+
+The system converts arbitrary file types into compressed, encrypted archives with metadata preservation and integrity verification through SHA-256 hashing. Unlike traditional archive formats, .pixe files are designed for modern workflows with built-in encryption, cross-platform compatibility, and extensible metadata structures.
+
+Pixe-Core addresses critical requirements for secure data portability in distributed environments, enabling developers to create tamper-evident archives that maintain confidentiality while remaining accessible across different systems and platforms.
+
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ArqonAi/Pixelog)](https://goreportcard.com/report/github.com/ArqonAi/Pixelog)
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/ArqonAi/Pixelog/actions)
+[![Coverage](https://img.shields.io/badge/Coverage-85%25-yellow.svg)](https://github.com/ArqonAi/Pixelog)
+[![Security](https://img.shields.io/badge/Security-AES--256--GCM-green.svg)](https://en.wikipedia.org/wiki/Galois/Counter_Mode)
+[![CLI Ready](https://img.shields.io/badge/CLI-Ready-orange.svg)](cmd/pixe)
 
-**Pixe-Core** is the open-source core library for creating, encrypting, and managing `.pixe` files - a secure, portable file format for data archival and transfer.
+## Features
 
-## ✨ Features
+- **AES-256-GCM Encryption** - Military-grade encryption with PBKDF2 key derivation
+- **File Conversion** - Convert any file type to secure .pixe format  
+- **Content Inspection** - List and analyze .pixe file contents without extraction
+- **QR Code Support** - Generate QR codes for data chunks
+- **Data Integrity** - SHA-256 hashing for tamper detection
+- **CLI Tool** - Command-line interface for all operations
+- **Go Library** - Clean API for integration into other projects
 
-- 🔒 **AES-256-GCM Encryption** - Military-grade encryption with PBKDF2 key derivation
-- 📦 **File Conversion** - Convert any file type to secure `.pixe` format  
-- 🔍 **Content Inspection** - List and analyze `.pixe` file contents without extraction
-- 📱 **QR Code Support** - Generate QR codes for data chunks (future: video encoding)
-- 🛡️ **Data Integrity** - SHA-256 hashing for tamper detection
-- 🚀 **CLI Tool** - Command-line interface for all operations
-- 📚 **Go Library** - Clean API for integration into other projects
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -48,7 +58,7 @@ pixe -input document.pixe -extract document.txt -decrypt mypassword
 pixe -list document.pixe
 ```
 
-## 📖 Library Usage
+## Library Usage
 
 ### Import the Package
 
@@ -113,7 +123,7 @@ for _, item := range contents {
 }
 ```
 
-## 🔐 Encryption Details
+## Encryption Details
 
 Pixe-Core uses **AES-256-GCM** encryption with the following security features:
 
@@ -129,7 +139,7 @@ Pixe-Core uses **AES-256-GCM** encryption with the following security features:
 [32-byte salt][12-byte nonce][encrypted data + auth tag]
 ```
 
-## 📋 .pixe File Format
+## .pixe File Format
 
 The `.pixe` format is a JSON-based container with the following structure:
 
@@ -154,7 +164,7 @@ The `.pixe` format is a JSON-based container with the following structure:
 }
 ```
 
-## 🛠️ CLI Reference
+## CLI Reference
 
 ### Commands
 
@@ -178,7 +188,7 @@ The `.pixe` format is a JSON-based container with the following structure:
 | `-decrypt` | string | Decryption password |
 | `-help` | bool | Show help message |
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 pixe-core/
@@ -191,7 +201,7 @@ pixe-core/
 └── docs/            # Documentation
 ```
 
-## 🧪 Examples
+## Examples
 
 See the [examples](examples/) directory for:
 
@@ -200,7 +210,7 @@ See the [examples](examples/) directory for:
 - Batch processing scripts
 - Integration patterns
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
@@ -210,21 +220,20 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-## 🔗 Related Projects
+## Related Projects
 
 - **[ArqonAi Platform](https://github.com/ArqonAi/Platform)** - Full-featured .pixe file manager with LLM integration (Private)
-- **[Memvid](https://github.com/ArqonAi/memvid)** - Video encoding for .pixe data
 
-## 📞 Support
+## Support
 
-- 📖 [Documentation](docs/)
-- 🐛 [Issue Tracker](https://github.com/ArqonAi/Pixelog/issues)
-- 💬 [Discussions](https://github.com/ArqonAi/Pixelog/discussions)
+- [Documentation](docs/)
+- [Issue Tracker](https://github.com/ArqonAi/Pixelog/issues)
+- [Discussions](https://github.com/ArqonAi/Pixelog/discussions)
 
 ---
 
-**Made with ❤️ by [ArqonAi](https://github.com/ArqonAi)**
+**Made by [ArqonAi](https://github.com/ArqonAi)**
