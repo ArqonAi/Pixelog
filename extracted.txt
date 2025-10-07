@@ -1,0 +1,1 @@
+Hello from pixe-core! This is a test file.
