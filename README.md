@@ -4,9 +4,9 @@
 
 Pixe-Core is a high-performance Go library for creating, encrypting, and managing .pixe files - a secure, portable file format designed for data archival and transfer. The library implements AES-256-GCM encryption with PBKDF2 key derivation, providing enterprise-grade security for sensitive data storage.
 
-The system converts arbitrary file types into compressed, encrypted archives with metadata preservation and integrity verification through SHA-256 hashing. Unlike traditional archive formats, .pixe files are designed for modern workflows with built-in encryption, cross-platform compatibility, and extensible metadata structures.
+The system converts arbitrary file types into compressed, encrypted archives with metadata preservation and integrity verification through SHA-256 hashing. Data is encoded into high-resolution QR code frames that are assembled into MP4 video files - .pixe files are essentially MP4s containing encoded data frames. Unlike traditional archive formats, .pixe files leverage the MP4 container format for built-in streaming capabilities, cross-platform compatibility, and video-based data encoding.
 
-Pixe-Core addresses critical requirements for secure data portability in distributed environments, enabling developers to create tamper-evident archives that maintain confidentiality while remaining accessible across different systems and platforms.
+Pixe-Core addresses critical requirements for secure data portability in distributed environments, enabling developers to create tamper-evident archives that maintain confidentiality while remaining accessible across different systems and platforms. The QR code encoding allows for novel use cases including video-based data storage and transmission.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/)
@@ -226,7 +226,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ## Related Projects
 
-- **[ArqonAi Platform](https://github.com/ArqonAi/Platform)** - Full-featured .pixe file manager with LLM integration (Private)
+- https://chat.arqon.ai
 
 ## Support
 
