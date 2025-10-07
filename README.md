@@ -1,7 +1,7 @@
 # 🔐 Pixe-Core
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ArqonAi/pixe-core)](https://goreportcard.com/report/github.com/ArqonAi/pixe-core)
 
 **Pixe-Core** is the open-source core library for creating, encrypting, and managing `.pixe` files - a secure, portable file format for data archival and transfer.
@@ -212,7 +212,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ## 🔗 Related Projects
 
