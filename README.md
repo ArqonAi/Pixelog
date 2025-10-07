@@ -12,7 +12,7 @@ Pixe-Core addresses critical requirements for secure data portability in distrib
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ArqonAi/Pixelog)](https://goreportcard.com/report/github.com/ArqonAi/Pixelog)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/ArqonAi/Pixelog/actions)
-[![Coverage](https://img.shields.io/badge/Coverage-85%25-yellow.svg)](https://github.com/ArqonAi/Pixelog)
+[![Coverage](https://img.shields.io/badge/Coverage-0%25-red.svg)](https://github.com/ArqonAi/Pixelog)
 [![Security](https://img.shields.io/badge/Security-AES--256--GCM-green.svg)](https://en.wikipedia.org/wiki/Galois/Counter_Mode)
 [![CLI Ready](https://img.shields.io/badge/CLI-Ready-orange.svg)](cmd/pixe)
 
