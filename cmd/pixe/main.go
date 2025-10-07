@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ArqonAi/pixe-core/pkg/converter"
+	"github.com/ArqonAi/Pixelog/pkg/converter"
 )
 
 func main() {

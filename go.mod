@@ -1,4 +1,4 @@
-module github.com/ArqonAi/pixe-core
+module github.com/ArqonAi/Pixelog
 
 go 1.21
 

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ArqonAi/pixe-core/pkg/crypto"
-	"github.com/ArqonAi/pixe-core/pkg/qr"
+	"github.com/ArqonAi/Pixelog/pkg/crypto"
+	"github.com/ArqonAi/Pixelog/pkg/qr"
 )
 
 // Converter handles file to .pixe conversion

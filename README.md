@@ -2,7 +2,7 @@
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ArqonAi/pixe-core)](https://goreportcard.com/report/github.com/ArqonAi/pixe-core)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ArqonAi/Pixelog)](https://goreportcard.com/report/github.com/ArqonAi/Pixelog)
 
 **Pixe-Core** is the open-source core library for creating, encrypting, and managing `.pixe` files - a secure, portable file format for data archival and transfer.
 
@@ -21,14 +21,14 @@
 ### Installation
 
 ```bash
-go install github.com/ArqonAi/pixe-core/cmd/pixe@latest
+go install github.com/ArqonAi/Pixelog/cmd/pixe@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/ArqonAi/pixe-core.git
-cd pixe-core
+git clone https://github.com/ArqonAi/Pixelog.git
+cd Pixelog
 go build -o pixe ./cmd/pixe
 ```
 
@@ -53,7 +53,7 @@ pixe -list document.pixe
 ### Import the Package
 
 ```go
-import "github.com/ArqonAi/pixe-core/pkg/converter"
+import "github.com/ArqonAi/Pixelog/pkg/converter"
 ```
 
 ### Convert Files
@@ -63,7 +63,7 @@ package main
 
 import (
     "log"
-    "github.com/ArqonAi/pixe-core/pkg/converter"
+    "github.com/ArqonAi/Pixelog/pkg/converter"
 )
 
 func main() {
@@ -216,14 +216,14 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ## 🔗 Related Projects
 
-- **[Pixelog](https://github.com/ArqonAi/Pixelog)** - Full-featured .pixe file manager with LLM integration
+- **[ArqonAi Platform](https://github.com/ArqonAi/Platform)** - Full-featured .pixe file manager with LLM integration (Private)
 - **[Memvid](https://github.com/ArqonAi/memvid)** - Video encoding for .pixe data
 
 ## 📞 Support
 
 - 📖 [Documentation](docs/)
-- 🐛 [Issue Tracker](https://github.com/ArqonAi/pixe-core/issues)
-- 💬 [Discussions](https://github.com/ArqonAi/pixe-core/discussions)
+- 🐛 [Issue Tracker](https://github.com/ArqonAi/Pixelog/issues)
+- 💬 [Discussions](https://github.com/ArqonAi/Pixelog/discussions)
 
 ---
 

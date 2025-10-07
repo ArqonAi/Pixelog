@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/ArqonAi/pixe-core/pkg/converter"
+	"github.com/ArqonAi/Pixelog/pkg/converter"
 )
 
 func main() {
