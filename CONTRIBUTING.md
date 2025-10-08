@@ -4,7 +4,6 @@ We welcome contributions to Pixe-Core! This document provides guidelines for con
 
 ## Table of Contents
 
-- [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
 - [Development Setup](#development-setup)
 - [Making Changes](#making-changes)
@@ -12,16 +11,6 @@ We welcome contributions to Pixe-Core! This document provides guidelines for con
 - [Submitting Changes](#submitting-changes)
 - [Code Style](#code-style)
 - [Security](#security)
-
-## Code of Conduct
-
-By participating in this project, you agree to abide by our Code of Conduct:
-
-- Use welcoming and inclusive language
-- Be respectful of differing viewpoints and experiences
-- Gracefully accept constructive criticism
-- Focus on what is best for the community
-- Show empathy towards other community members
 
 ## Getting Started
 
