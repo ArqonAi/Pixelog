@@ -1,4 +1,3 @@
-// Package crypto provides AES-256-GCM encryption for .pixe files
 package crypto
 
 import (
@@ -8,20 +7,25 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"math/big"
+	"os"
 
 	"golang.org/x/crypto/pbkdf2"
 )
 
-// EncryptionService provides encryption and decryption functionality
-type EncryptionService struct{}
-
-// NewEncryptionService creates a new encryption service
-func NewEncryptionService() *EncryptionService {
-	return &EncryptionService{}
+type EncryptionService struct {
+	enabled bool
 }
 
-// Encrypt encrypts data using AES-256-GCM with a password-derived key
-func (e *EncryptionService) Encrypt(data []byte, password string) ([]byte, error) {
+func NewEncryptionService(enabled bool) *EncryptionService {
+	return &EncryptionService{enabled: enabled}
+}
+
+// EncryptData encrypts data using AES-256-GCM with a password-derived key
+func (e *EncryptionService) EncryptData(data []byte, password string) ([]byte, error) {
+	if !e.enabled {
+		return data, nil // Return data unencrypted if encryption disabled
+	}
+
 	if password == "" {
 		return nil, fmt.Errorf("password required for encryption")
 	}
@@ -65,8 +69,12 @@ func (e *EncryptionService) Encrypt(data []byte, password string) ([]byte, error
 	return encrypted, nil
 }
 
-// Decrypt decrypts AES-256-GCM encrypted data
-func (e *EncryptionService) Decrypt(encrypted []byte, password string) ([]byte, error) {
+// DecryptData decrypts AES-256-GCM encrypted data
+func (e *EncryptionService) DecryptData(encrypted []byte, password string) ([]byte, error) {
+	if !e.enabled {
+		return encrypted, nil // Return data as-is if encryption disabled
+	}
+
 	if password == "" {
 		return nil, fmt.Errorf("password required for decryption")
 	}
@@ -124,4 +132,19 @@ func (e *EncryptionService) GenerateRandomPassword(length int) (string, error) {
 func (e *EncryptionService) HashPassword(password string) string {
 	hash := sha256.Sum256([]byte(password))
 	return fmt.Sprintf("%x", hash)
+}
+
+// EncryptFile encrypts a file and returns the encrypted content
+func (e *EncryptionService) EncryptFile(filePath string, password string) ([]byte, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	return e.EncryptData(data, password)
+}
+
+// IsEnabled returns whether encryption is enabled
+func (e *EncryptionService) IsEnabled() bool {
+	return e.enabled
 }
