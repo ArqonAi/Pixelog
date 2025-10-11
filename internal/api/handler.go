@@ -14,17 +14,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ArqonAi/Pixelog/backend/internal/qr"
+	"github.com/ArqonAi/Pixelog/internal/qr"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/makiuchi-d/gozxing"
 	qrReader "github.com/makiuchi-d/gozxing/qrcode"
 	"image/png"
 
-	"github.com/ArqonAi/Pixelog/backend/internal/converter"
-	"github.com/ArqonAi/Pixelog/backend/internal/crypto"
-	"github.com/ArqonAi/Pixelog/backend/internal/search"
-	"github.com/ArqonAi/Pixelog/backend/internal/storage"
+	"github.com/ArqonAi/Pixelog/internal/converter"
+	"github.com/ArqonAi/Pixelog/internal/crypto"
+	"github.com/ArqonAi/Pixelog/internal/search"
+	"github.com/ArqonAi/Pixelog/internal/storage"
 )
 
 type Handler struct {

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ArqonAi/Pixelog/backend/pkg/config"
+	"github.com/ArqonAi/Pixelog/pkg/config"
 )
 
 type EmbeddingProvider interface {

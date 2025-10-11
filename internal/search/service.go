@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ArqonAi/Pixelog/backend/pkg/config"
+	"github.com/ArqonAi/Pixelog/pkg/config"
 )
 
 type SearchService struct {

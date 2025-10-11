@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ArqonAi/Pixelog/backend/internal/crypto"
-	"github.com/ArqonAi/Pixelog/backend/internal/qr"
-	"github.com/ArqonAi/Pixelog/backend/internal/video"
-	"github.com/ArqonAi/Pixelog/backend/pkg/config"
+	"github.com/ArqonAi/Pixelog/internal/crypto"
+	"github.com/ArqonAi/Pixelog/internal/qr"
+	"github.com/ArqonAi/Pixelog/internal/video"
+	"github.com/ArqonAi/Pixelog/pkg/config"
 )
 
 type Converter struct {

@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ArqonAi/Pixelog/backend/internal/qr"
-	"github.com/ArqonAi/Pixelog/backend/pkg/config"
+	"github.com/ArqonAi/Pixelog/internal/qr"
+	"github.com/ArqonAi/Pixelog/pkg/config"
 	"github.com/makiuchi-d/gozxing"
 	qrReader "github.com/makiuchi-d/gozxing/qrcode"
 )
