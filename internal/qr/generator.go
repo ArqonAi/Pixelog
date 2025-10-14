@@ -3,13 +3,15 @@ package qr
 import (
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/png"
+	"image/png"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
-	"github.com/skip2/go-qrcode"
+	"github.com/makiuchi-d/gozxing"
+	"github.com/makiuchi-d/gozxing/qrcode"
 )
 
 type Generator struct {
@@ -48,12 +50,26 @@ func (g *Generator) GenerateFrames(chunks []Chunk) ([]string, error) {
 			return nil, fmt.Errorf("failed to serialize chunk %d: %w", i, err)
 		}
 
-		// Generate QR code
+		// Generate QR code with gozxing
 		framePath := filepath.Join(g.outputDir, fmt.Sprintf("frame_%05d.png", i))
-
-		err = qrcode.WriteFile(string(chunkData), qrcode.Medium, 512, framePath)
+		
+		writer := qrcode.NewQRCodeWriter()
+		hints := make(map[gozxing.EncodeHintType]interface{})
+		hints[gozxing.EncodeHintType_ERROR_CORRECTION] = "M"
+		bitMatrix, err := writer.Encode(string(chunkData), gozxing.BarcodeFormat_QR_CODE, 512, 512, hints)
 		if err != nil {
-			return nil, fmt.Errorf("failed to generate QR code for chunk %d: %w", i, err)
+			return nil, fmt.Errorf("failed to encode QR code for chunk %d: %w", i, err)
+		}
+		
+		file, err := os.Create(framePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create frame file: %w", err)
+		}
+		defer file.Close()
+		
+		err = png.Encode(file, bitMatrix)
+		if err != nil {
+			return nil, fmt.Errorf("failed to save QR image for chunk %d: %w", i, err)
 		}
 
 		framePaths = append(framePaths, framePath)
@@ -69,80 +85,60 @@ func (g *Generator) GenerateFrame(chunk Chunk, frameNumber int) (string, error) 
 		return "", fmt.Errorf("failed to serialize chunk: %w", err)
 	}
 
-	// Generate QR code
+	// Generate QR code with gozxing
 	framePath := filepath.Join(g.outputDir, fmt.Sprintf("frame_%05d.png", frameNumber))
-
-	err = qrcode.WriteFile(string(chunkData), qrcode.Medium, 512, framePath)
+	
+	writer := qrcode.NewQRCodeWriter()
+	hints := make(map[gozxing.EncodeHintType]interface{})
+	hints[gozxing.EncodeHintType_ERROR_CORRECTION] = "M"
+	bitMatrix, err := writer.Encode(string(chunkData), gozxing.BarcodeFormat_QR_CODE, 512, 512, hints)
 	if err != nil {
-		return "", fmt.Errorf("failed to generate QR code: %w", err)
+		return "", fmt.Errorf("failed to encode QR code: %w", err)
+	}
+	
+	file, err := os.Create(framePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create frame file: %w", err)
+	}
+	defer file.Close()
+	
+	err = png.Encode(file, bitMatrix)
+	if err != nil {
+		return "", fmt.Errorf("failed to save QR image: %w", err)
 	}
 
 	return framePath, nil
 }
 
 func DecodeFrame(imagePath string) (*Chunk, error) {
-	// Use OpenCV via Python script for reliable QR decoding (like memvid)
-	pythonScript := `
-import cv2
-import sys
-import json
-
-try:
-    # Load image
-    img = cv2.imread(sys.argv[1])
-    if img is None:
-        print("ERROR: Could not load image", file=sys.stderr)
-        sys.exit(1)
-    
-    # Create QR detector
-    qcd = cv2.QRCodeDetector()
-    
-    # Detect and decode QR codes
-    retval, decoded_info, points, straight_qrcode = qcd.detectAndDecodeMulti(img)
-    
-    # Check if any QR codes were found
-    if not retval or not decoded_info:
-        print("ERROR: No QR codes found", file=sys.stderr)
-        sys.exit(1)
-    
-    # Find the first non-empty decoded QR code
-    for data in decoded_info:
-        if data.strip():
-            print(data)
-            sys.exit(0)
-    
-    print("ERROR: All QR codes were empty", file=sys.stderr)
-    sys.exit(1)
-    
-except Exception as e:
-    print(f"ERROR: {e}", file=sys.stderr)
-    sys.exit(1)
-`
-
-	// Write Python script to temp file
-	tempScript := "/tmp/qr_decode.py"
-	if err := os.WriteFile(tempScript, []byte(pythonScript), 0644); err != nil {
-		return nil, fmt.Errorf("failed to write Python script: %w", err)
-	}
-	defer os.Remove(tempScript)
-
-	// Execute Python script with OpenCV
-	cmd := exec.Command("python3", tempScript, imagePath)
-	output, err := cmd.CombinedOutput()
-	
+	// Use gozxing for pure Go QR decoding
+	file, err := os.Open(imagePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode QR with OpenCV: %v, output: %s", err, string(output))
+		return nil, fmt.Errorf("failed to open image: %w", err)
+	}
+	defer file.Close()
+
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode image: %w", err)
 	}
 
-	// Parse the JSON output
-	qrData := strings.TrimSpace(string(output))
-	if qrData == "" {
-		return nil, fmt.Errorf("empty QR data returned")
+	bmp, err := gozxing.NewBinaryBitmapFromImage(img)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create bitmap: %w", err)
+	}
+
+	reader := qrcode.NewQRCodeReader()
+	hints := make(map[gozxing.DecodeHintType]interface{})
+	hints[gozxing.DecodeHintType_PURE_BARCODE] = true
+	result, err := reader.Decode(bmp, hints)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode QR code: %w", err)
 	}
 
 	var chunk Chunk
-	if err := json.Unmarshal([]byte(qrData), &chunk); err != nil {
-		return nil, fmt.Errorf("failed to parse chunk JSON: %w, data: %s", err, qrData)
+	if err := json.Unmarshal([]byte(result.GetText()), &chunk); err != nil {
+		return nil, fmt.Errorf("failed to parse QR data: %w", err)
 	}
 
 	return &chunk, nil
