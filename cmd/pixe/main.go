@@ -29,6 +29,16 @@ func main() {
 		handleVersion()
 	case "versions":
 		handleListVersions()
+	case "chat":
+		handleChat()
+	case "query":
+		handleQuery()
+	case "diff":
+		handleDiff()
+	case "info":
+		handleInfo()
+	case "verify":
+		handleVerify()
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -41,13 +51,24 @@ func main() {
 func printUsage() {
 	fmt.Println(`Pixe CLI - Convert files to .pixe format with smart indexing
 
-Usage:
+Basic Commands:
   pixe convert <input> [options]    Convert file to .pixe format
   pixe extract <input> [options]    Extract content from .pixe file
+  pixe info <input>                 Show detailed file information
+  pixe verify <input>               Verify file integrity
+
+Smart Indexing:
   pixe index <input>                Build vector index for fast search
   pixe search <input> <query>       Semantic search in .pixe file
+  pixe chat <input> [options]       Interactive LLM chat with memory
+
+Version Control (Git for QR codes):
   pixe version <input> [options]    Create new version with delta encoding
   pixe versions <input>             List all versions of a .pixe file
+  pixe query <input> <v> <query>    Time-travel query at specific version
+  pixe diff <input> <from> <to>     Show differences between versions
+
+Help:
   pixe help                         Show this help message
 
 Convert Options:
@@ -71,16 +92,25 @@ Version Options:
   --author <name>                   Author name
 
 Examples:
-  # Basic conversion
+  # Basic usage
   pixe convert document.txt -o doc.pixe
+  pixe info doc.pixe
+  pixe verify doc.pixe
   
-  # Smart indexing for fast search
+  # Smart indexing and search
   pixe index doc.pixe
-  pixe search doc.pixe "main topics"
+  pixe search doc.pixe "main topics" --top 5
+  
+  # Interactive LLM chat
+  pixe chat doc.pixe --api-key sk-xxx
+  export OPENROUTER_API_KEY=sk-xxx
+  pixe chat doc.pixe --provider openrouter --model deepseek/deepseek-chat
   
   # Version control (Git for QR codes)
-  pixe version doc.pixe -m "Added new section"
+  pixe version doc.pixe -m "Added new section" --author "user"
   pixe versions doc.pixe
+  pixe diff doc.pixe 1 2
+  pixe query doc.pixe 1 "what was in version 1?"
   
   # Encryption
   pixe convert secret.txt -o secret.pixe --encrypt --password mypass123
