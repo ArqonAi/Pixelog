@@ -2,12 +2,17 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/ArqonAi/Pixelog/internal/index"
+	"github.com/ArqonAi/Pixelog/internal/llm"
 	"github.com/ArqonAi/Pixelog/internal/video"
 )
 
@@ -128,16 +133,18 @@ func handleChat() {
 
 		// Build prompt
 		contextStr := strings.Join(contexts, "\n\n---\n\n")
-		_ = fmt.Sprintf("Context:\n%s\n\nQuestion: %s", contextStr, query) // prompt for LLM
+		prompt := fmt.Sprintf("Use the following context to answer the question.\n\nContext:\n%s\n\nQuestion: %s\n\nAnswer:", contextStr, query)
 
-		// Call LLM (simplified - in production use proper API client)
-		fmt.Printf("Assistant: [Calling %s...]\n", model)
-		fmt.Println("Context retrieved from frames:", len(contexts))
-		fmt.Println("(Full LLM integration requires API client)\n")
+		// Call LLM API
+		fmt.Printf("\n🤔 Thinking...")
+		client := llm.NewClient(provider, model, apiKey)
+		response, err := client.Chat(prompt)
+		if err != nil {
+			fmt.Printf("\nLLM error: %v\n\n", err)
+			continue
+		}
 
-		// TODO: Implement actual LLM API call
-		// response := callLLM(provider, model, apiKey, prompt)
-		// fmt.Printf("Assistant: %s\n\n", response)
+		fmt.Printf("\r✓ Assistant: %s\n\n", response)
 	}
 }
 
@@ -351,10 +358,32 @@ func handleVerify() {
 }
 
 func decompressIfNeeded(data string) string {
+	// Check if data is GZIP-compressed
 	if !strings.HasPrefix(data, "GZ:") {
+		return data // Already decompressed
+	}
+
+	// Remove GZ: prefix and decode base64
+	compressedData, err := base64.StdEncoding.DecodeString(data[3:])
+	if err != nil {
+		fmt.Printf("Warning: Failed to decode base64: %v\n", err)
 		return data
 	}
 
-	// Simple decompression (implement full version)
-	return data
+	// GZIP decompress
+	gzipReader, err := gzip.NewReader(bytes.NewReader(compressedData))
+	if err != nil {
+		fmt.Printf("Warning: Failed to create gzip reader: %v\n", err)
+		return data
+	}
+	defer gzipReader.Close()
+
+	var decompressed bytes.Buffer
+	_, err = io.Copy(&decompressed, gzipReader)
+	if err != nil {
+		fmt.Printf("Warning: Failed to decompress: %v\n", err)
+		return data
+	}
+
+	return decompressed.String()
 }
