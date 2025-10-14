@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ArqonAi/Pixelog/backend/internal/converter"
-	"github.com/ArqonAi/Pixelog/backend/pkg/config"
+	"github.com/ArqonAi/Pixelog/internal/converter"
+	"github.com/ArqonAi/Pixelog/pkg/config"
 )
 
 func main() {
@@ -21,6 +21,14 @@ func main() {
 		handleConvert()
 	case "extract":
 		handleExtract()
+	case "index":
+		handleIndex()
+	case "search":
+		handleSearch()
+	case "version":
+		handleVersion()
+	case "versions":
+		handleListVersions()
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -31,11 +39,15 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Println(`Pixe CLI - Convert files to .pixe format
+	fmt.Println(`Pixe CLI - Convert files to .pixe format with smart indexing
 
 Usage:
   pixe convert <input> [options]    Convert file to .pixe format
   pixe extract <input> [options]    Extract content from .pixe file
+  pixe index <input>                Build vector index for fast search
+  pixe search <input> <query>       Semantic search in .pixe file
+  pixe version <input> [options]    Create new version with delta encoding
+  pixe versions <input>             List all versions of a .pixe file
   pixe help                         Show this help message
 
 Convert Options:
@@ -47,10 +59,31 @@ Extract Options:
   -o, --output <dir>                Output directory (default: ./output)
   --password <password>             Password for decryption
 
+Index Options:
+  --provider <provider>             Embedding provider (openai, mock)
+  --api-key <key>                   API key for embeddings
+
+Search Options:
+  --top <N>                         Return top N results (default: 5)
+
+Version Options:
+  -m, --message <message>           Version commit message
+  --author <name>                   Author name
+
 Examples:
+  # Basic conversion
   pixe convert document.txt -o doc.pixe
+  
+  # Smart indexing for fast search
+  pixe index doc.pixe
+  pixe search doc.pixe "main topics"
+  
+  # Version control (Git for QR codes)
+  pixe version doc.pixe -m "Added new section"
+  pixe versions doc.pixe
+  
+  # Encryption
   pixe convert secret.txt -o secret.pixe --encrypt --password mypass123
-  pixe extract doc.pixe -o ./extracted
   pixe extract secret.pixe -o ./extracted --password mypass123`)
 }
 
