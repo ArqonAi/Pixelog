@@ -69,9 +69,19 @@ pixe index doc.pixe
 # Semantic search (<100ms)
 pixe search doc.pixe "main topics" --top 5
 
-# Interactive LLM chat
-export OPENROUTER_API_KEY=sk-xxx
-pixe chat doc.pixe --model deepseek/deepseek-chat
+# Interactive LLM chat (auto-selects latest models)
+export GOOGLE_API_KEY=AIza...  # FREE Gemini 2.0!
+pixe chat doc.pixe
+# → Using gemini-2.0-flash-exp (auto-selected)
+# → Cost: FREE! 🎉
+
+export OPENROUTER_API_KEY=sk-xxx  # DeepSeek R1 (cheapest reasoning)
+pixe chat doc.pixe
+# → Using deepseek/deepseek-r1 (auto-selected)
+# → Cost: $0.14/1M tokens
+
+# Or specify custom model
+pixe chat doc.pixe --model anthropic/claude-3.5-sonnet
 ```
 
 ---
@@ -445,6 +455,32 @@ pixe index doc.pixe
 - OpenAI: `text-embedding-3-large` (3072 dimensions)
 - Gemini: `text-embedding-004` (768 dimensions)
 - OpenRouter: `openai/text-embedding-3-large` (proxy)
+
+### Chat Models (LLM)
+
+**Latest models auto-selected for `pixe chat`:**
+
+| Provider | Auto-Selected Model | Cost | Notes |
+|----------|---------------------|------|-------|
+| **Gemini** | `gemini-2.0-flash-exp` | **FREE** 🎉 | Latest Gemini 2.0 (experimental) |
+| **OpenRouter** | `deepseek/deepseek-r1` | **$0.14/1M** | Latest reasoning model (cheapest!) |
+| **OpenAI** | `gpt-4.5-turbo` | $0.50/1M | Latest GPT-4.5 |
+| **Anthropic** | `claude-4.5-sonnet-20250514` | $3.00/1M | Latest Claude 4.5 (best quality) |
+| **xAI** | `grok-3` | $5.00/1M | Latest Grok 3 with real-time data |
+
+**Usage:**
+```bash
+# Auto-selects latest model per provider
+export GOOGLE_API_KEY=AIza...
+pixe chat doc.pixe
+# → Using gemini with model gemini-2.0-flash-exp
+# → Cost: FREE! 🎉
+
+# Or manually specify any model
+pixe chat doc.pixe --provider openrouter --model deepseek/deepseek-r1
+pixe chat doc.pixe --provider openrouter --model anthropic/claude-3.5-sonnet
+pixe chat doc.pixe --provider openrouter --model meta-llama/llama-3.3-70b
+```
 
 ### How is this different from Git?
 

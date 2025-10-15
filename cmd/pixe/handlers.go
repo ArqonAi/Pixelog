@@ -233,8 +233,8 @@ func handleChat() {
 	}
 
 	inputPath := os.Args[2]
-	provider := "openrouter"
-	model := "deepseek/deepseek-chat"
+	provider := ""
+	model := ""
 	apiKey := ""
 
 	// Parse flags
@@ -258,20 +258,51 @@ func handleChat() {
 		}
 	}
 
-	if apiKey == "" {
-		apiKey = os.Getenv("OPENROUTER_API_KEY")
-		if apiKey == "" {
-			apiKey = os.Getenv("OPENAI_API_KEY")
+	// Auto-detect provider from environment if not specified
+	if apiKey == "" && provider == "" {
+		// Try all providers in order of best value
+		if key := os.Getenv("GOOGLE_API_KEY"); key != "" {
+			apiKey = key
+			provider = "gemini"
+		} else if key := os.Getenv("OPENROUTER_API_KEY"); key != "" {
+			apiKey = key
+			provider = "openrouter"
+		} else if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+			apiKey = key
+			provider = "openai"
+		} else if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+			apiKey = key
+			provider = "anthropic"
+		} else if key := os.Getenv("XAI_API_KEY"); key != "" {
+			apiKey = key
+			provider = "xai"
 		}
 	}
 
 	if apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Error: API key required")
-		fmt.Fprintln(os.Stderr, "Provide via --api-key flag or OPENROUTER_API_KEY/OPENAI_API_KEY env var")
+		fmt.Fprintln(os.Stderr, "Error: API key required for chat")
+		fmt.Fprintln(os.Stderr, "Provide via --api-key flag or set one of these env vars:")
+		fmt.Fprintln(os.Stderr, "  GOOGLE_API_KEY (FREE Gemini 2.0!)")
+		fmt.Fprintln(os.Stderr, "  OPENROUTER_API_KEY (cheapest, $0.14/1M tokens)")
+		fmt.Fprintln(os.Stderr, "  OPENAI_API_KEY (GPT-4.5, $0.50/1M tokens)")
+		fmt.Fprintln(os.Stderr, "  ANTHROPIC_API_KEY (Claude 4.5, $3/1M tokens)")
+		fmt.Fprintln(os.Stderr, "  XAI_API_KEY (Grok 3, $5/1M tokens)")
 		os.Exit(1)
 	}
 
-	fmt.Printf("🤖 Pixe Chat - Using %s with %s\n", provider, model)
+	// Auto-select latest model if not specified
+	if model == "" {
+		model = llm.GetDefaultChatModel(provider)
+	}
+
+	fmt.Printf("🤖 Pixe Chat - Using %s\n", provider)
+	fmt.Printf("📊 Model: %s (auto-selected latest)\n", model)
+	cost := llm.GetModelCost(model)
+	if cost == 0.0 {
+		fmt.Printf("💰 Cost: FREE! 🎉\n")
+	} else {
+		fmt.Printf("💰 Cost: ~$%.2f per 1M tokens\n", cost)
+	}
 	fmt.Printf("📁 Memory: %s\n\n", inputPath)
 	fmt.Println("Type your questions (or 'quit' to exit)")
 	fmt.Println("──────────────────────────────────────────\n")
