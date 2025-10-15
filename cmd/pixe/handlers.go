@@ -228,23 +228,23 @@ func handleSearch() {
 func handleChat() {
 	if len(os.Args) < 3 {
 		fmt.Fprintln(os.Stderr, "Error: input .pixe file required")
-		fmt.Println("Usage: pixe chat <input.pixe> [--provider openrouter] [--model MODEL] [--api-key KEY]")
+		fmt.Println("Usage: pixe chat <input.pixe> [--model MODEL] [--api-key KEY] [--list]")
+		fmt.Println("")
+		fmt.Println("Top 10 Models:")
+		for i, m := range llm.GetTop10Models() {
+			fmt.Printf("  %d. %s - %s ($%.2f/1M)\n", i+1, m.Name, m.Description, m.Cost)
+		}
 		os.Exit(1)
 	}
 
 	inputPath := os.Args[2]
-	provider := ""
 	model := ""
 	apiKey := ""
+	showList := false
 
 	// Parse flags
 	for i := 3; i < len(os.Args); i++ {
 		switch os.Args[i] {
-		case "--provider":
-			if i+1 < len(os.Args) {
-				provider = os.Args[i+1]
-				i++
-			}
 		case "--model":
 			if i+1 < len(os.Args) {
 				model = os.Args[i+1]
@@ -255,48 +255,47 @@ func handleChat() {
 				apiKey = os.Args[i+1]
 				i++
 			}
+		case "--list":
+			showList = true
 		}
 	}
 
-	// Auto-detect provider from environment if not specified
-	if apiKey == "" && provider == "" {
-		// Try all providers in order of best value
-		if key := os.Getenv("GOOGLE_API_KEY"); key != "" {
-			apiKey = key
-			provider = "gemini"
-		} else if key := os.Getenv("OPENROUTER_API_KEY"); key != "" {
-			apiKey = key
-			provider = "openrouter"
-		} else if key := os.Getenv("OPENAI_API_KEY"); key != "" {
-			apiKey = key
-			provider = "openai"
-		} else if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
-			apiKey = key
-			provider = "anthropic"
-		} else if key := os.Getenv("XAI_API_KEY"); key != "" {
-			apiKey = key
-			provider = "xai"
+	// Show top 10 models
+	if showList {
+		fmt.Println("\n🚀 Top 10 Latest LLM Models (via OpenRouter):\n")
+		for i, m := range llm.GetTop10Models() {
+			fmt.Printf("%d. %-20s %s\n", i+1, m.Name, m.Description)
+			fmt.Printf("   Model: %s\n", m.Model)
+			fmt.Printf("   Cost: $%.2f/1M tokens | Speed: %s | Quality: %s\n\n", m.Cost, m.Speed, m.Quality)
 		}
+		os.Exit(0)
+	}
+
+	// Get OpenRouter API key
+	if apiKey == "" {
+		apiKey = os.Getenv("OPENROUTER_API_KEY")
 	}
 
 	if apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Error: API key required for chat")
-		fmt.Fprintln(os.Stderr, "Provide via --api-key flag or set one of these env vars:")
-		fmt.Fprintln(os.Stderr, "  GOOGLE_API_KEY (FREE Gemini 2.0!)")
-		fmt.Fprintln(os.Stderr, "  OPENROUTER_API_KEY (cheapest, $0.14/1M tokens)")
-		fmt.Fprintln(os.Stderr, "  OPENAI_API_KEY (GPT-4.5, $0.50/1M tokens)")
-		fmt.Fprintln(os.Stderr, "  ANTHROPIC_API_KEY (Claude 4.5, $3/1M tokens)")
-		fmt.Fprintln(os.Stderr, "  XAI_API_KEY (Grok 3, $5/1M tokens)")
+		fmt.Fprintln(os.Stderr, "Error: OpenRouter API key required")
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "Get your free API key at: https://openrouter.ai/keys")
+		fmt.Fprintln(os.Stderr, "Then set it:")
+		fmt.Fprintln(os.Stderr, "  export OPENROUTER_API_KEY=sk-or-v1-...")
+		fmt.Fprintln(os.Stderr, "  pixe chat doc.pixe")
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "Or use --api-key flag:")
+		fmt.Fprintln(os.Stderr, "  pixe chat doc.pixe --api-key sk-or-v1-...")
 		os.Exit(1)
 	}
 
-	// Auto-select latest model if not specified
+	// Auto-select best default model if not specified
 	if model == "" {
-		model = llm.GetDefaultChatModel(provider)
+		model = llm.GetDefaultModel()
 	}
 
-	fmt.Printf("🤖 Pixe Chat - Using %s\n", provider)
-	fmt.Printf("📊 Model: %s (auto-selected latest)\n", model)
+	fmt.Printf("🤖 Pixe Chat (OpenRouter)\n")
+	fmt.Printf("📊 Model: %s\n", model)
 	cost := llm.GetModelCost(model)
 	if cost == 0.0 {
 		fmt.Printf("💰 Cost: FREE! 🎉\n")
@@ -370,7 +369,7 @@ func handleChat() {
 
 		// Call LLM API
 		fmt.Printf("\n🤔 Thinking...")
-		client := llm.NewClient(provider, model, apiKey)
+		client := llm.NewClient(model, apiKey)
 		response, err := client.Chat(prompt)
 		if err != nil {
 			fmt.Printf("\nLLM error: %v\n\n", err)

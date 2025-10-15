@@ -1,97 +1,58 @@
 package llm
 
-// GetDefaultChatModel returns the latest/best LLM model for each provider
-func GetDefaultChatModel(provider string) string {
-	switch provider {
-	case "openai":
-		return "gpt-4.5-turbo" // Latest GPT (GPT-5 not released yet, 4.5 is latest)
-	case "openrouter":
-		return "deepseek/deepseek-r1" // Latest DeepSeek R1 (reasoning model)
-	case "google", "gemini":
-		return "gemini-2.0-flash-exp" // Latest Gemini 2.0 (2.5 not public yet)
-	case "anthropic", "claude":
-		return "claude-4.5-sonnet-20250514" // Latest Claude 4.5
-	case "xai", "grok":
-		return "grok-3" // Latest Grok 3
-	default:
-		return "deepseek/deepseek-r1" // Default to cheapest high-quality
-	}
-}
-
-// GetModelCost returns approximate cost per million tokens (input/output average)
-func GetModelCost(model string) float64 {
-	costs := map[string]float64{
-		// OpenAI
-		"gpt-4.5-turbo":               0.50,  // $0.50/1M tokens
-		"gpt-4o":                      0.75,  // $0.75/1M tokens
-		
-		// DeepSeek (OpenRouter)
-		"deepseek/deepseek-r1":        0.14,  // $0.14/1M tokens (cheapest reasoning!)
-		"deepseek/deepseek-chat":      0.14,  // $0.14/1M tokens
-		
-		// Gemini
-		"gemini-2.0-flash-exp":        0.00,  // FREE during preview!
-		"gemini-2.0-pro-exp":          0.00,  // FREE during preview!
-		
-		// Claude
-		"claude-4.5-sonnet-20250514":  3.00,  // $3/1M tokens (most expensive, best quality)
-		"claude-3.5-sonnet":           3.00,  // $3/1M tokens
-		
-		// Grok
-		"grok-3":                      5.00,  // $5/1M tokens (via xAI)
-		"grok-2":                      5.00,  // $5/1M tokens
-		
-		// Other popular models
-		"anthropic/claude-3.5-sonnet": 3.00,  // via OpenRouter
-		"google/gemini-2.0-flash-exp": 0.00,  // via OpenRouter (free)
-		"meta-llama/llama-3.3-70b":    0.18,  // $0.18/1M tokens
-	}
+// Top 10 Latest Models (all via OpenRouter)
+const (
+	// Top tier - Latest models
+	ModelGPT5         = "openai/gpt-5"                    // Latest GPT-5
+	ModelGemini25Pro  = "google/gemini-2.5-pro-latest"   // Latest Gemini 2.5 Pro
+	ModelClaude45     = "anthropic/claude-4.5-sonnet"    // Latest Claude 4.5
+	ModelDeepSeekR1   = "deepseek/deepseek-r1"           // Latest DeepSeek R1 (reasoning)
+	ModelGrok3        = "x-ai/grok-3"                     // Latest Grok 3
 	
-	if cost, ok := costs[model]; ok {
-		return cost
-	}
-	return 1.00 // Default estimate
+	// High value models
+	ModelGemini25Flash = "google/gemini-2.5-flash-latest" // Fast Gemini 2.5
+	ModelLlama33      = "meta-llama/llama-3.3-70b-instruct" // Latest Llama
+	ModelQwen25       = "qwen/qwen-2.5-72b-instruct"     // Latest Qwen 2.5
+	ModelMistralLarge = "mistralai/mistral-large-latest" // Latest Mistral
+	ModelGPT4o        = "openai/gpt-4o"                  // GPT-4o (fallback)
+)
+
+// GetDefaultModel returns the best default model (cheapest with great quality)
+func GetDefaultModel() string {
+	return ModelDeepSeekR1 // $0.14/1M tokens, excellent reasoning
 }
 
-// RecommendedModels returns list of recommended models by use case
-type ModelRecommendation struct {
+// GetTop10Models returns the top 10 latest models
+func GetTop10Models() []ModelInfo {
+	return []ModelInfo{
+		{Model: ModelDeepSeekR1, Name: "DeepSeek R1", Cost: 0.14, Speed: "Fast", Quality: "Excellent", Description: "Best value - reasoning model"},
+		{Model: ModelGemini25Flash, Name: "Gemini 2.5 Flash", Cost: 0.00, Speed: "Very Fast", Quality: "Excellent", Description: "FREE! Latest Google"},
+		{Model: ModelGemini25Pro, Name: "Gemini 2.5 Pro", Cost: 0.50, Speed: "Medium", Quality: "Best", Description: "Latest Gemini, best quality"},
+		{Model: ModelGPT5, Name: "GPT-5", Cost: 2.50, Speed: "Medium", Quality: "Best", Description: "Latest OpenAI flagship"},
+		{Model: ModelClaude45, Name: "Claude 4.5 Sonnet", Cost: 3.00, Speed: "Medium", Quality: "Best", Description: "Latest Anthropic, best reasoning"},
+		{Model: ModelGrok3, Name: "Grok 3", Cost: 5.00, Speed: "Fast", Quality: "Excellent", Description: "Latest xAI with real-time data"},
+		{Model: ModelLlama33, Name: "Llama 3.3 70B", Cost: 0.18, Speed: "Fast", Quality: "Excellent", Description: "Open source, great quality"},
+		{Model: ModelQwen25, Name: "Qwen 2.5 72B", Cost: 0.18, Speed: "Fast", Quality: "Excellent", Description: "Alibaba's latest, multilingual"},
+		{Model: ModelMistralLarge, Name: "Mistral Large", Cost: 2.00, Speed: "Fast", Quality: "Excellent", Description: "European flagship"},
+		{Model: ModelGPT4o, Name: "GPT-4o", Cost: 0.75, Speed: "Fast", Quality: "Excellent", Description: "Multimodal OpenAI"},
+	}
+}
+
+type ModelInfo struct {
 	Model       string
-	Provider    string
-	Cost        float64
+	Name        string
+	Cost        float64 // Cost per 1M tokens
+	Speed       string
+	Quality     string
 	Description string
 }
 
-func GetRecommendedModels() []ModelRecommendation {
-	return []ModelRecommendation{
-		{
-			Model:       "gemini-2.0-flash-exp",
-			Provider:    "google",
-			Cost:        0.00,
-			Description: "FREE + Fast + Latest Gemini 2.0 (best value)",
-		},
-		{
-			Model:       "deepseek/deepseek-r1",
-			Provider:    "openrouter",
-			Cost:        0.14,
-			Description: "Cheapest reasoning model ($0.14/1M tokens)",
-		},
-		{
-			Model:       "gpt-4.5-turbo",
-			Provider:    "openai",
-			Cost:        0.50,
-			Description: "Latest GPT with great quality",
-		},
-		{
-			Model:       "claude-4.5-sonnet-20250514",
-			Provider:    "anthropic",
-			Cost:        3.00,
-			Description: "Highest quality, best reasoning (expensive)",
-		},
-		{
-			Model:       "grok-3",
-			Provider:    "xai",
-			Cost:        5.00,
-			Description: "Latest xAI model with real-time data",
-		},
+// GetModelCost returns cost per million tokens
+func GetModelCost(model string) float64 {
+	for _, m := range GetTop10Models() {
+		if m.Model == model {
+			return m.Cost
+		}
 	}
+	return 1.00 // Default estimate
 }

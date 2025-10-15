@@ -69,19 +69,20 @@ pixe index doc.pixe
 # Semantic search (<100ms)
 pixe search doc.pixe "main topics" --top 5
 
-# Interactive LLM chat (auto-selects latest models)
-export GOOGLE_API_KEY=AIza...  # FREE Gemini 2.0!
+# Interactive LLM chat (OpenRouter - access ALL models)
+export OPENROUTER_API_KEY=sk-or-v1-xxx
 pixe chat doc.pixe
-# → Using gemini-2.0-flash-exp (auto-selected)
-# → Cost: FREE! 🎉
+# 🤖 Pixe Chat (OpenRouter)
+# 📊 Model: deepseek/deepseek-r1 (auto-selected)
+# 💰 Cost: ~$0.14 per 1M tokens
 
-export OPENROUTER_API_KEY=sk-xxx  # DeepSeek R1 (cheapest reasoning)
-pixe chat doc.pixe
-# → Using deepseek/deepseek-r1 (auto-selected)
-# → Cost: $0.14/1M tokens
+# List top 10 latest models
+pixe chat doc.pixe --list
 
-# Or specify custom model
-pixe chat doc.pixe --model anthropic/claude-3.5-sonnet
+# Choose specific model
+pixe chat doc.pixe --model openai/gpt-5                # Latest GPT-5
+pixe chat doc.pixe --model google/gemini-2.5-pro-latest  # Latest Gemini 2.5
+pixe chat doc.pixe --model anthropic/claude-4.5-sonnet  # Latest Claude 4.5
 ```
 
 ---
@@ -458,29 +459,52 @@ pixe index doc.pixe
 
 ### Chat Models (LLM)
 
-**Latest models auto-selected for `pixe chat`:**
+**🚀 OpenRouter - Access ALL Latest Models in One Place**
 
-| Provider | Auto-Selected Model | Cost | Notes |
-|----------|---------------------|------|-------|
-| **Gemini** | `gemini-2.0-flash-exp` | **FREE** 🎉 | Latest Gemini 2.0 (experimental) |
-| **OpenRouter** | `deepseek/deepseek-r1` | **$0.14/1M** | Latest reasoning model (cheapest!) |
-| **OpenAI** | `gpt-4.5-turbo` | $0.50/1M | Latest GPT-4.5 |
-| **Anthropic** | `claude-4.5-sonnet-20250514` | $3.00/1M | Latest Claude 4.5 (best quality) |
-| **xAI** | `grok-3` | $5.00/1M | Latest Grok 3 with real-time data |
+OpenRouter provides unified API access to all major LLM providers. One API key, 200+ models.
+
+**Top 10 Latest Models (via OpenRouter):**
+
+| Rank | Model | Cost | Speed | Quality | Description |
+|------|-------|------|-------|---------|-------------|
+| 1 | **DeepSeek R1** | **$0.14/1M** | Fast | Excellent | 🎯 Best value - reasoning model |
+| 2 | **Gemini 2.5 Flash** | **FREE** 🎉 | Very Fast | Excellent | Latest Google, fast & free |
+| 3 | **Gemini 2.5 Pro** | $0.50/1M | Medium | Best | Latest Gemini, best quality |
+| 4 | **GPT-5** | $2.50/1M | Medium | Best | Latest OpenAI flagship |
+| 5 | **Claude 4.5 Sonnet** | $3.00/1M | Medium | Best | Latest Anthropic, best reasoning |
+| 6 | **Grok 3** | $5.00/1M | Fast | Excellent | Latest xAI with real-time data |
+| 7 | Llama 3.3 70B | $0.18/1M | Fast | Excellent | Open source, great quality |
+| 8 | Qwen 2.5 72B | $0.18/1M | Fast | Excellent | Alibaba's latest, multilingual |
+| 9 | Mistral Large | $2.00/1M | Fast | Excellent | European flagship |
+| 10 | GPT-4o | $0.75/1M | Fast | Excellent | Multimodal OpenAI |
 
 **Usage:**
 ```bash
-# Auto-selects latest model per provider
-export GOOGLE_API_KEY=AIza...
-pixe chat doc.pixe
-# → Using gemini with model gemini-2.0-flash-exp
-# → Cost: FREE! 🎉
+# Get free API key at https://openrouter.ai/keys
+export OPENROUTER_API_KEY=sk-or-v1-xxx
 
-# Or manually specify any model
-pixe chat doc.pixe --provider openrouter --model deepseek/deepseek-r1
-pixe chat doc.pixe --provider openrouter --model anthropic/claude-3.5-sonnet
-pixe chat doc.pixe --provider openrouter --model meta-llama/llama-3.3-70b
+# Auto-selects DeepSeek R1 (best value)
+pixe chat doc.pixe
+# 🤖 Pixe Chat (OpenRouter)
+# 📊 Model: deepseek/deepseek-r1
+# 💰 Cost: ~$0.14 per 1M tokens
+
+# List all top 10 models
+pixe chat doc.pixe --list
+
+# Choose specific model
+pixe chat doc.pixe --model openai/gpt-5
+pixe chat doc.pixe --model google/gemini-2.5-pro-latest
+pixe chat doc.pixe --model anthropic/claude-4.5-sonnet
+pixe chat doc.pixe --model x-ai/grok-3
 ```
+
+**Why OpenRouter?**
+- ✅ One API key for 200+ models (OpenAI, Anthropic, Google, xAI, Meta, etc.)
+- ✅ Always has latest models (GPT-5, Gemini 2.5, Claude 4.5, Grok 3)
+- ✅ Often cheaper than direct APIs (6-10x savings)
+- ✅ Automatic failover and load balancing
+- ✅ Free tier available
 
 ### How is this different from Git?
 
