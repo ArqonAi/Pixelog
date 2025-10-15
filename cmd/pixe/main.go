@@ -48,11 +48,25 @@ func main() {
 	}
 }
 
+func formatSize(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
 func printUsage() {
 	fmt.Println(`Pixe CLI - Convert files to .pixe format with smart indexing
 
 Basic Commands:
   pixe convert <input> [options]    Convert file to .pixe format
+    --stream                        Use streaming mode for large files (constant memory)
   pixe extract <input> [options]    Extract content from .pixe file
   pixe info <input>                 Show detailed file information
   pixe verify <input>               Verify file integrity
@@ -128,6 +142,7 @@ func handleConvert() {
 	outputPath := ""
 	password := ""
 	encrypt := false
+	useStreaming := false
 
 	// Parse flags
 	for i := 3; i < len(os.Args); i++ {
@@ -144,6 +159,8 @@ func handleConvert() {
 				password = os.Args[i+1]
 				i++
 			}
+		case "--stream":
+			useStreaming = true
 		}
 	}
 
@@ -172,10 +189,41 @@ func handleConvert() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Converting %s to %s...\n", inputPath, outputPath)
+	// Check file size to auto-enable streaming
+	fileInfo, err := os.Stat(inputPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		os.Exit(1)
+	}
 
-	// Convert
-	err = conv.Convert(inputPath, outputPath, nil, password)
+	// Auto-enable streaming for files > 100MB
+	if !useStreaming && fileInfo.Size() > 100*1024*1024 {
+		fmt.Printf("🔄 File size %s detected - auto-enabling streaming mode\n", formatSize(fileInfo.Size()))
+		useStreaming = true
+	}
+
+	if useStreaming {
+		fmt.Printf("📦 Converting %s to %s (streaming mode)...\n", inputPath, outputPath)
+		
+		// Use streaming processor
+		streamer := converter.NewStreamingProcessor(conv)
+		
+		// Set progress callback
+		streamer.SetProgressCallback(func(bytesProcessed, totalBytes int64, currentChunk, totalChunks int) {
+			percent := float64(bytesProcessed) / float64(totalBytes) * 100
+			fmt.Printf("\r🔄 Progress: %.1f%% (%s / %s) - Chunk %d/%d", 
+				percent, formatSize(bytesProcessed), formatSize(totalBytes), currentChunk, totalChunks)
+		})
+		
+		err = streamer.StreamToVideo(inputPath, outputPath, password)
+		fmt.Println() // New line after progress
+	} else {
+		fmt.Printf("Converting %s to %s...\n", inputPath, outputPath)
+		
+		// Standard conversion
+		err = conv.Convert(inputPath, outputPath, nil, password)
+	}
+	
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error converting file: %v\n", err)
 		os.Exit(1)

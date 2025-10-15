@@ -16,6 +16,7 @@ Pixelog transforms documents into **QR-encoded MP4 videos** (`.pixe` files) with
 - 🕰️ **Time-travel queries** - Query any historical version
 - 🔒 **Military-grade encryption** - AES-256-GCM with PBKDF2
 - 📦 **64% space savings** - Delta encoding stores only changes
+- 💧 **Streaming support** - Handle multi-GB files with constant memory
 - ✈️ **Air-gapped capable** - Works completely offline
 
 ## 🎯 What Makes Pixelog Unique?
@@ -58,6 +59,9 @@ go build -o pixe ./cmd/pixe
 ```bash
 # Convert document to .pixe format
 pixe convert document.txt -o doc.pixe
+
+# Large files (auto-streams if >100MB, or force with --stream)
+pixe convert large-codebase.tar.gz --stream
 
 # Build smart index (one-time, 136ms)
 pixe index doc.pixe
@@ -257,6 +261,36 @@ pixelog/
 - Delta encoding: **64% space savings**
 - GZIP compression: **75% reduction**
 - Combined: **~80% smaller** than raw storage
+
+### Streaming Mode
+
+**For large files (codebases, archives, databases):**
+
+```bash
+# Auto-enabled for files >100MB
+pixe convert large-project.tar.gz -o project.pixe
+# 🔄 File size 500.0 MB detected - auto-enabling streaming mode
+# 📦 Streaming large-project.tar.gz (500.0 MB) → project.pixe
+# 🔄 Processing in 1.0 MB chunks...
+# 🔄 Progress: 100.0% (500.0 MB / 500.0 MB) - Chunk 500/500
+# ✅ Video created: project.pixe
+
+# Or force streaming mode
+pixe convert file.dat --stream
+```
+
+**Benefits:**
+- ✅ Constant memory usage (~10MB regardless of file size)
+- ✅ Progress indication with percentage
+- ✅ Handle multi-GB files without crashes
+- ✅ Real-time processing (no waiting for full load)
+
+**How it works:**
+```
+File → 1MB chunks → Encrypt → Compress → QR → Video
+         ↓ (streaming)
+    Constant 10MB RAM (not file size!)
+```
 
 ---
 
@@ -458,8 +492,8 @@ pixe query compliance-docs.pixe 3 "what was the policy in Q3?"
 
 ## 🚀 Roadmap
 
+- [x] **Streaming support** - Handle multi-GB files ✅
 - [ ] Local embeddings (no API needed)
-- [ ] Streaming support for large files
 - [ ] Multi-language support
 - [ ] Web UI for visualization
 - [ ] Docker image

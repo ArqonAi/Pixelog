@@ -87,6 +87,19 @@ func New(cfg *config.Config) (*Converter, error) {
 	}, nil
 }
 
+// GetVideoMaker returns the video maker instance
+func (c *Converter) GetVideoMaker() (*video.Maker, error) {
+	if c.videoMaker == nil {
+		return nil, fmt.Errorf("video maker not initialized")
+	}
+	return c.videoMaker, nil
+}
+
+// GetConfig returns the configuration
+func (c *Converter) GetConfig() *config.Config {
+	return c.config
+}
+
 func (c *Converter) Convert(inputPath, outputPath string, progressChan chan<- Progress, encryptionPassword ...string) error {
 	jobID := generateJobID()
 
