@@ -25,6 +25,8 @@ type Embedder interface {
 	Dim() int
 }
 
+// NewIndexer creates an indexer
+// embedder can be nil for loading/searching existing indexes
 func NewIndexer(indexDir string, embedder Embedder) (*Indexer, error) {
 	if err := os.MkdirAll(indexDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create index directory: %w", err)
@@ -44,6 +46,10 @@ func NewIndexer(indexDir string, embedder Embedder) (*Indexer, error) {
 
 // BuildIndex creates a vector index for a .pixe file
 func (idx *Indexer) BuildIndex(memoryID, pixeFile string) (*MemoryIndex, error) {
+	if idx.embedder == nil {
+		return nil, fmt.Errorf("embedder required for building index - provide API key")
+	}
+	
 	fmt.Printf("Building index for %s...\n", memoryID)
 	
 	// Extract all frames (one-time cost)

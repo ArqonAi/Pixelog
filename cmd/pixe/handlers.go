@@ -47,16 +47,29 @@ func handleIndex() {
 		}
 	}
 
-	fmt.Printf("Building index for %s...\n", inputPath)
-
-	// Create embedder
-	var embedder index.Embedder
-	if provider == "openai" && apiKey != "" {
-		embedder = index.NewSimpleEmbedder("openai", apiKey, "text-embedding-3-small")
-	} else {
-		embedder = index.NewMockEmbedder()
-		fmt.Println("Using mock embedder (384 dimensions)")
+	// Check for API key
+	if apiKey == "" {
+		apiKey = os.Getenv("OPENAI_API_KEY")
+		if apiKey == "" {
+			apiKey = os.Getenv("OPENROUTER_API_KEY")
+		}
 	}
+
+	if apiKey == "" {
+		fmt.Fprintln(os.Stderr, "Error: API key required for indexing")
+		fmt.Fprintln(os.Stderr, "Provide via --api-key flag or set OPENAI_API_KEY/OPENROUTER_API_KEY env var")
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "Example:")
+		fmt.Fprintln(os.Stderr, "  export OPENAI_API_KEY=sk-xxx")
+		fmt.Fprintln(os.Stderr, "  pixe index file.pixe")
+		os.Exit(1)
+	}
+
+	fmt.Printf("Building index for %s...\n", inputPath)
+	fmt.Printf("Using %s embeddings (semantic search)\n", provider)
+
+	// Create embedder with real API
+	embedder := index.NewSimpleEmbedder(provider, apiKey, "text-embedding-3-small")
 
 	// Create indexer
 	indexer, err := index.NewIndexer("./indexes", embedder)
@@ -82,13 +95,15 @@ func handleIndex() {
 func handleSearch() {
 	if len(os.Args) < 4 {
 		fmt.Fprintln(os.Stderr, "Error: input .pixe file and query required")
-		fmt.Println("Usage: pixe search <input.pixe> <query>")
+		fmt.Println("Usage: pixe search <input.pixe> <query> [--api-key KEY]")
 		os.Exit(1)
 	}
 
 	inputPath := os.Args[2]
 	query := os.Args[3]
 	topK := 5
+	provider := "openai"
+	apiKey := ""
 
 	// Parse flags
 	for i := 4; i < len(os.Args); i++ {
@@ -103,13 +118,37 @@ func handleSearch() {
 				}
 				i++
 			}
+		case "--api-key":
+			if i+1 < len(os.Args) {
+				apiKey = os.Args[i+1]
+				i++
+			}
+		case "--provider":
+			if i+1 < len(os.Args) {
+				provider = os.Args[i+1]
+				i++
+			}
 		}
+	}
+
+	// Check for API key
+	if apiKey == "" {
+		apiKey = os.Getenv("OPENAI_API_KEY")
+		if apiKey == "" {
+			apiKey = os.Getenv("OPENROUTER_API_KEY")
+		}
+	}
+
+	if apiKey == "" {
+		fmt.Fprintln(os.Stderr, "Error: API key required for search (need to embed query)")
+		fmt.Fprintln(os.Stderr, "Provide via --api-key flag or set OPENAI_API_KEY/OPENROUTER_API_KEY env var")
+		os.Exit(1)
 	}
 
 	fmt.Printf("Searching in %s for: \"%s\"\n\n", inputPath, query)
 
-	// Create embedder
-	embedder := index.NewMockEmbedder()
+	// Create embedder for query
+	embedder := index.NewSimpleEmbedder(provider, apiKey, "text-embedding-3-small")
 	indexer, err := index.NewIndexer("./indexes", embedder)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating indexer: %v\n", err)
@@ -198,25 +237,20 @@ func handleChat() {
 	fmt.Println("Type your questions (or 'quit' to exit)")
 	fmt.Println("──────────────────────────────────────────\n")
 
-	// Load or build index
-	embedder := index.NewMockEmbedder()
-	indexer, err := index.NewIndexer("./indexes", embedder)
+	// Load index (nil embedder since we're loading existing index)
+	indexer, err := index.NewIndexer("./indexes", nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Check if index exists, build if not
+	// Check if index exists
 	memoryID := inputPath
 	idx, err := indexer.LoadIndex(memoryID)
 	if err != nil {
-		fmt.Println("Building index first (one-time operation)...")
-		idx, err = indexer.BuildIndex(memoryID, inputPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error building index: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("✓ Index built\n")
+		fmt.Fprintln(os.Stderr, "Error: Index not found")
+		fmt.Fprintf(os.Stderr, "Run 'pixe index %s --api-key YOUR_KEY' first to build the index\n", inputPath)
+		os.Exit(1)
 	}
 
 	// Interactive chat loop
@@ -310,8 +344,8 @@ func handleVersion() {
 
 	fmt.Printf("Creating new version for %s...\n", inputPath)
 
-	embedder := index.NewMockEmbedder()
-	indexer, _ := index.NewIndexer("./indexes", embedder)
+	// No embedder needed for version operations
+	indexer, _ := index.NewIndexer("./indexes", nil)
 
 	deltaManager, err := index.NewDeltaManager("./deltas", indexer)
 	if err != nil {
@@ -346,8 +380,8 @@ func handleListVersions() {
 	inputPath := os.Args[2]
 	fmt.Printf("Versions for %s:\n\n", inputPath)
 
-	embedder := index.NewMockEmbedder()
-	indexer, _ := index.NewIndexer("./indexes", embedder)
+	// No embedder needed for version operations
+	indexer, _ := index.NewIndexer("./indexes", nil)
 
 	deltaManager, err := index.NewDeltaManager("./deltas", indexer)
 	if err != nil {
@@ -401,8 +435,8 @@ func handleQuery() {
 	fmt.Printf("File: %s\n", inputPath)
 	fmt.Printf("Query: %s\n\n", query)
 
-	embedder := index.NewMockEmbedder()
-	indexer, _ := index.NewIndexer("./indexes", embedder)
+	// No embedder needed for version operations
+	indexer, _ := index.NewIndexer("./indexes", nil)
 	deltaManager, err := index.NewDeltaManager("./deltas", indexer)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -438,8 +472,8 @@ func handleDiff() {
 	fmt.Printf("📊 Diff: v%d → v%d\n", fromVer, toVer)
 	fmt.Printf("File: %s\n\n", inputPath)
 
-	embedder := index.NewMockEmbedder()
-	indexer, _ := index.NewIndexer("./indexes", embedder)
+	// No embedder needed for version operations
+	indexer, _ := index.NewIndexer("./indexes", nil)
 	deltaManager, _ := index.NewDeltaManager("./deltas", indexer)
 
 	memoryID := inputPath
@@ -500,8 +534,8 @@ func handleInfo() {
 	}
 
 	memoryID := inputPath
-	embedder := index.NewMockEmbedder()
-	indexer, _ := index.NewIndexer("./indexes", embedder)
+	// No embedder needed for version operations
+	indexer, _ := index.NewIndexer("./indexes", nil)
 	idx, err := indexer.LoadIndex(memoryID)
 	if err == nil {
 		fmt.Printf("\n📚 Index Information:\n")

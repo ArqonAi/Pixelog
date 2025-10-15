@@ -326,7 +326,6 @@ pixe versions test.pixe
 ## 📖 Documentation
 
 - **[E2E Testing Guide](docs/E2E_TESTING.md)** - Complete testing workflow
-- **[Embeddings Explained](docs/EMBEDDINGS.md)** - Mock vs Real embeddings
 - **[CONTRIBUTING](CONTRIBUTING.md)** - Contribution guidelines
 - **[Examples](examples/)** - Code examples
 
@@ -342,19 +341,26 @@ pixe versions test.pixe
 4. **Visual inspection** - Literally see your data as QR codes
 5. **Novel use cases** - Video-based data transmission
 
-### Mock vs Real embeddings?
+### Do I need an API key?
 
-**Mock Embedder (Default):**
-- ✅ Works offline
-- ✅ Zero cost
-- ❌ Keyword matching only
+**Yes** - API key required for semantic search:
 
-**Real Embedder (Optional):**
-- ✅ Semantic understanding
-- ✅ "car" = "automobile"
-- ❌ Requires API key
+**For indexing:** One-time cost
+- ~$0.10 per 100,000 words
+- Builds vector index (cached forever)
 
-**Best Practice:** Index once with real embeddings ($2-20), cache forever (free)
+**For searching:** Per-query cost
+- ~$0.0001 per query (needs to embed your question)
+- Sub-100ms retrieval after embedding
+
+**For LLM chat:** Per-message cost
+- ~$0.10 per million tokens
+- OpenRouter recommended (cheapest)
+
+**Total cost example:**
+- Index 1000 documents: $2 (one-time)
+- 10,000 searches: $1 (ongoing)
+- Much cheaper than maintaining a database!
 
 ### How is this different from Git?
 
