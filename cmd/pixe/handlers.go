@@ -47,17 +47,36 @@ func handleIndex() {
 		}
 	}
 
-	// Check for API key
+	// Check for API key from multiple providers
 	if apiKey == "" {
 		apiKey = os.Getenv("OPENAI_API_KEY")
 		if apiKey == "" {
 			apiKey = os.Getenv("OPENROUTER_API_KEY")
 		}
+		if apiKey == "" {
+			apiKey = os.Getenv("GOOGLE_API_KEY")
+			if apiKey != "" {
+				provider = "gemini"
+			}
+		}
+		if apiKey == "" {
+			apiKey = os.Getenv("ANTHROPIC_API_KEY")
+			if apiKey != "" {
+				provider = "anthropic"
+			}
+		}
+		if apiKey == "" {
+			apiKey = os.Getenv("XAI_API_KEY")
+			if apiKey != "" {
+				provider = "xai"
+			}
+		}
 	}
 
 	if apiKey == "" {
 		fmt.Fprintln(os.Stderr, "Error: API key required for indexing")
-		fmt.Fprintln(os.Stderr, "Provide via --api-key flag or set OPENAI_API_KEY/OPENROUTER_API_KEY env var")
+		fmt.Fprintln(os.Stderr, "Provide via --api-key flag or set one of these env vars:")
+		fmt.Fprintln(os.Stderr, "  OPENAI_API_KEY, OPENROUTER_API_KEY, GOOGLE_API_KEY, ANTHROPIC_API_KEY, XAI_API_KEY")
 		fmt.Fprintln(os.Stderr, "")
 		fmt.Fprintln(os.Stderr, "Example:")
 		fmt.Fprintln(os.Stderr, "  export OPENAI_API_KEY=sk-xxx")
@@ -66,10 +85,11 @@ func handleIndex() {
 	}
 
 	fmt.Printf("Building index for %s...\n", inputPath)
-	fmt.Printf("Using %s embeddings (semantic search)\n", provider)
-
-	// Create embedder with real API
-	embedder := index.NewSimpleEmbedder(provider, apiKey, "text-embedding-3-small")
+	
+	// Create embedder with auto model selection
+	embedder := index.NewSimpleEmbedder(provider, apiKey, "auto")
+	model, _ := index.GetDefaultModel(provider)
+	fmt.Printf("Using %s with model %s (semantic search)\n", provider, model)
 
 	// Create indexer
 	indexer, err := index.NewIndexer("./indexes", embedder)
@@ -131,24 +151,43 @@ func handleSearch() {
 		}
 	}
 
-	// Check for API key
+	// Check for API key from multiple providers
 	if apiKey == "" {
 		apiKey = os.Getenv("OPENAI_API_KEY")
 		if apiKey == "" {
 			apiKey = os.Getenv("OPENROUTER_API_KEY")
 		}
+		if apiKey == "" {
+			apiKey = os.Getenv("GOOGLE_API_KEY")
+			if apiKey != "" {
+				provider = "gemini"
+			}
+		}
+		if apiKey == "" {
+			apiKey = os.Getenv("ANTHROPIC_API_KEY")
+			if apiKey != "" {
+				provider = "anthropic"
+			}
+		}
+		if apiKey == "" {
+			apiKey = os.Getenv("XAI_API_KEY")
+			if apiKey != "" {
+				provider = "xai"
+			}
+		}
 	}
 
 	if apiKey == "" {
 		fmt.Fprintln(os.Stderr, "Error: API key required for search (need to embed query)")
-		fmt.Fprintln(os.Stderr, "Provide via --api-key flag or set OPENAI_API_KEY/OPENROUTER_API_KEY env var")
+		fmt.Fprintln(os.Stderr, "Provide via --api-key flag or set one of these env vars:")
+		fmt.Fprintln(os.Stderr, "  OPENAI_API_KEY, OPENROUTER_API_KEY, GOOGLE_API_KEY, ANTHROPIC_API_KEY, XAI_API_KEY")
 		os.Exit(1)
 	}
 
 	fmt.Printf("Searching in %s for: \"%s\"\n\n", inputPath, query)
 
-	// Create embedder for query
-	embedder := index.NewSimpleEmbedder(provider, apiKey, "text-embedding-3-small")
+	// Create embedder for query with auto model selection
+	embedder := index.NewSimpleEmbedder(provider, apiKey, "auto")
 	indexer, err := index.NewIndexer("./indexes", embedder)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating indexer: %v\n", err)
