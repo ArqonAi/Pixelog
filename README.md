@@ -2,6 +2,8 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ArqonAi/Pixelog)](https://goreportcard.com/report/github.com/ArqonAi/Pixelog)
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/ArqonAi/Pixelog/actions)
 [![CLI Ready](https://img.shields.io/badge/CLI-12%20Commands-orange.svg)](cmd/pixe)
 [![Security](https://img.shields.io/badge/Security-AES--256--GCM-green.svg)](https://en.wikipedia.org/wiki/Galois/Counter_Mode)
 [![Format](https://img.shields.io/badge/Format-MP4%20Video-red.svg)](https://en.wikipedia.org/wiki/MP4_file_format)
