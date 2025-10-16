@@ -116,7 +116,7 @@ pixe diff <file> <from> <to>          # Version diff
 
 ---
 
-## 💡 Real-World Examples
+##  Real-World Examples
 
 ### 1. Knowledge Base Management
 
@@ -216,7 +216,7 @@ pixe verify vault.pixe --password mypass
 
 ---
 
-## 🏗 Architecture
+##  Architecture
 
 ### How It Works
 
@@ -280,10 +280,10 @@ pixelog/
 ```bash
 # Auto-enabled for files >100MB
 pixe convert large-project.tar.gz -o project.pixe
-# 🔄 File size 500.0 MB detected - auto-enabling streaming mode
+#  File size 500.0 MB detected - auto-enabling streaming mode
 #  Streaming large-project.tar.gz (500.0 MB) → project.pixe
-# 🔄 Processing in 1.0 MB chunks...
-# 🔄 Progress: 100.0% (500.0 MB / 500.0 MB) - Chunk 500/500
+#  Processing in 1.0 MB chunks...
+#  Progress: 100.0% (500.0 MB / 500.0 MB) - Chunk 500/500
 #  Video created: project.pixe
 
 # Or force streaming mode
@@ -329,7 +329,7 @@ Encrypted Chunk:
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 ### Run E2E Tests
 
@@ -368,7 +368,7 @@ pixe versions test.pixe
 
 ---
 
-## 📖 Documentation
+##  Documentation
 
 - **[E2E Testing Guide](docs/E2E_TESTING.md)** - Complete testing workflow
 - **[CONTRIBUTING](CONTRIBUTING.md)** - Contribution guidelines
@@ -388,74 +388,47 @@ pixe versions test.pixe
 
 ### Do I need an API key?
 
-**Yes** - API key required for semantic search. **Supports 5 providers:**
+**Yes** - OpenRouter API key required for both embeddings (indexing/search) and LLM chat.
 
-| Provider | Env Var | Model (Auto-Selected) | Cost | Notes |
-|----------|---------|----------------------|------|-------|
-| **OpenAI** | `OPENAI_API_KEY` | `text-embedding-3-large` (3072d) | $0.13/1M tokens | High quality |
-| **OpenRouter** | `OPENROUTER_API_KEY` | `openai/text-embedding-3-large` | $0.02/1M tokens | **6x cheaper**  |
-| **Google Gemini** | `GOOGLE_API_KEY` | `text-embedding-004` (768d) | $0.01/1M tokens | **13x cheaper**  |
-| **Anthropic** | `ANTHROPIC_API_KEY` | Via OpenRouter proxy | $0.02/1M tokens | No native embeddings API* |
-| **xAI Grok** | `XAI_API_KEY` | Via OpenRouter proxy | $0.02/1M tokens | No embeddings API yet* |
+**Get your free API key:** https://openrouter.ai/keys
 
-**Why proxies?**
-- \* **Anthropic (Claude)**: Only has LLM API, no embeddings endpoint
-- \* **xAI (Grok)**: Focus on LLMs, embeddings not released yet
-- Both route through OpenRouter which uses OpenAI embeddings
-- Transparent to you - just set the key and it works!
+```bash
+export OPENROUTER_API_KEY=sk-or-v1-xxx
+```
 
-**For indexing:** One-time cost
-- ~$0.10 per 100,000 words (OpenAI)
-- ~$0.01 per 100,000 words (Gemini)
-- Builds vector index (cached forever)
+**Costs:**
 
-**For searching:** Per-query cost
-- ~$0.0001 per query (needs to embed your question)
-- Sub-100ms retrieval after embedding
+| Feature | Model | Cost | Notes |
+|---------|-------|------|-------|
+| **Embeddings** (indexing) | text-embedding-3-large | $0.02/1M tokens | One-time cost |
+| **Chat** (DeepSeek R1) | deepseek/deepseek-r1 | $0.14/1M tokens | Default model |
+| **Chat** (Gemini 2.5 Flash) | google/gemini-2.5-flash-latest | FREE | Free tier |
+| **Chat** (GPT-5) | openai/gpt-5 | $2.50/1M tokens | Latest OpenAI |
+| **Chat** (Claude 4.5) | anthropic/claude-4.5-sonnet | $3.00/1M tokens | Best reasoning |
 
-**For LLM chat:** Per-message cost
-- ~$0.10 per million tokens
-- OpenRouter/Gemini recommended (cheapest)
-
-**Total cost example:**
-- Index 1000 documents: $2 (OpenAI) or $0.20 (Gemini) one-time
-- 10,000 searches: $1 (ongoing)
-- Much cheaper than maintaining a database!
+**Example costs:**
+- Index 1,000 documents: ~$2 (one-time)
+- 10,000 searches: ~$1
+- 1M tokens of chat: $0.14 (DeepSeek) or FREE (Gemini)
 
 **Usage:**
 ```bash
-# OpenAI - Auto-selects text-embedding-3-large (best quality)
-export OPENAI_API_KEY=sk-xxx
-pixe index doc.pixe
-# Using openai with model text-embedding-3-large (semantic search)
-
-# Google Gemini - Auto-selects text-embedding-004 (cheapest!)
-export GOOGLE_API_KEY=AIza...
-pixe index doc.pixe
-# Using gemini with model models/text-embedding-004 (semantic search)
-
-# OpenRouter - Auto-selects openai/text-embedding-3-large (6x cheaper)
+# Set API key once
 export OPENROUTER_API_KEY=sk-or-v1-xxx
-pixe index doc.pixe
-# Using openrouter with model openai/text-embedding-3-large (semantic search)
 
-# Anthropic - Proxies to OpenRouter (no native embeddings)
-export ANTHROPIC_API_KEY=sk-ant-xxx
+# Build index (one-time)
 pixe index doc.pixe
-# Routes through OpenRouter automatically
 
-# xAI Grok - Proxies to OpenRouter (no embeddings yet)
-export XAI_API_KEY=xai-xxx
-pixe index doc.pixe
-# Routes through OpenRouter automatically
+# Search (instant)
+pixe search doc.pixe "your query"
+
+# Chat with documents
+pixe chat doc.pixe
+# Auto-selects DeepSeek R1 ($0.14/1M)
+
+# Or use free tier
+pixe chat doc.pixe --model google/gemini-2.5-flash-latest
 ```
-
-**Model auto-selection:**
-- Each provider automatically uses its **latest/best embedding model**
-- No need to specify `--model` flag
-- OpenAI: `text-embedding-3-large` (3072 dimensions)
-- Gemini: `text-embedding-004` (768 dimensions)
-- OpenRouter: `openai/text-embedding-3-large` (proxy)
 
 ### Chat Models (LLM)
 
@@ -519,7 +492,7 @@ pixe chat doc.pixe --model x-ai/grok-3
 
 ---
 
-## 🛠 Library Usage
+##  Library Usage
 
 ### Go Library
 
@@ -559,7 +532,7 @@ func main() {
 
 ---
 
-## 🌟 Use Cases
+##  Use Cases
 
 ### 1. RAG (Retrieval Augmented Generation)
 ```bash
@@ -613,7 +586,7 @@ pixe query compliance-docs.pixe 3 "what was the policy in Q3?"
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -631,7 +604,7 @@ git push origin feature/amazing-feature
 
 ---
 
-## 📄 License
+##  License
 
 Apache License 2.0 - see [LICENSE](LICENSE)
 
@@ -644,14 +617,14 @@ Apache License 2.0 - see [LICENSE](LICENSE)
 
 ---
 
-## 💬 Support
+##  Support
 
 -  [Documentation](docs/)
-- 🐛 [Issue Tracker](https://github.com/ArqonAi/Pixelog/issues)
-- 💬 [Discussions](https://github.com/ArqonAi/Pixelog/discussions)
+-  [Issue Tracker](https://github.com/ArqonAi/Pixelog/issues)
+-  [Discussions](https://github.com/ArqonAi/Pixelog/discussions)
 
 ---
 
-**Made with ❤ by [ArqonAi](https://github.com/ArqonAi)**
+**Made with  by [ArqonAi](https://github.com/ArqonAi)**
 
 *Turn your documents into videos. Search at the speed of thought. Track changes like Git. Chat with AI.*
