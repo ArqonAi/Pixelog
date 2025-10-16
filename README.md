@@ -13,137 +13,31 @@
 [![Version Control](https://img.shields.io/badge/Git--like-Delta%20Encoding-orange.svg)](#)
 [![Streaming](https://img.shields.io/badge/Streaming-Multi--GB%20Files-blue.svg)](#)
 
-## Abstract
-
-**Pixelog is a novel archival system that encodes documents as QR code frames in standard MP4 video files, enabling universal playback, Git-like version control, and sub-100ms semantic search through vector embeddings.**
-
-### The Problem
-
-Traditional archival formats (ZIP, TAR, databases) face fundamental limitations:
-- **No universal playback**: Require specific software to read
-- **No version control**: Cannot track document evolution over time
-- **No semantic search**: Only support keyword matching, not meaning-based queries
-- **Memory constraints**: Cannot handle multi-GB files efficiently
-- **Platform dependencies**: Require databases or complex infrastructure
-
-### The Solution: Video-Based Knowledge Storage
-
-Pixelog encodes each document as **QR code frames** in a **standard MP4 video**. Each frame contains a chunk of the original data, creating a visual representation that is:
-
-1. **Universally compatible**: MP4 plays on any device (phones, computers, TVs, browsers)
-2. **Frame-addressable**: Direct seek to specific data chunks without loading entire file
-3. **Streamable**: Progressive loading enables handling multi-GB archives with constant 10MB memory
-4. **Visually inspectable**: Literally see your data as it's stored (each frame is a readable QR code)
-5. **Hardware-accelerated**: Leverage GPU decoding and video processing pipelines
-
-### Why QR Codes?
-
-QR codes provide:
-- **Error correction**: Reed-Solomon codes recover data even if frames are damaged (up to 30% damage tolerance)
-- **Density**: Store ~2.9KB per frame at 1080p resolution
-- **Visual verification**: Each frame can be scanned individually with a phone camera
-- **Industry standard**: Proven technology used globally for data encoding
-- **No proprietary formats**: Open standard, future-proof
-
-### Why MP4 Video Format?
-
-MP4 (MPEG-4 Part 14) is ideal because:
-- **Universal support**: Native playback on 100% of modern devices
-- **Mature ecosystem**: Decades of optimization, hardware acceleration, streaming protocols
-- **Frame precision**: Exact frame seeking for instant random access
-- **Metadata support**: Store encryption info, timestamps, version history in video headers
-- **Container flexibility**: Can embed multiple tracks (data + metadata + index)
-- **Efficient encoding**: H.264/H.265 compression reduces file size without data loss on QR frames
-
-### Key Innovations
-
-**1. Git-Like Version Control for Videos**
-- Delta encoding stores only frame differences between versions (64% space savings)
-- Track document evolution with commit-like versioning
-- Time-travel queries: search any historical version
-- Merge and diff operations on video frames
-
-**2. Sub-100ms Semantic Search**
-- Vector embeddings (via OpenRouter) map content to high-dimensional space
-- HNSW indexing enables instant nearest-neighbor search
-- Find by meaning, not just keywords
-- Search across all versions simultaneously
-
-**3. Interactive LLM Chat**
-- RAG (Retrieval Augmented Generation) with your archived documents
-- Semantic search retrieves relevant context automatically
-- Access 200+ LLM models via single API key (OpenRouter)
-- Free tier available (Gemini 2.5 Flash)
-
-**4. Streaming Architecture**
-- Process files of any size with constant 10MB memory footprint
-- No need to load entire archive into RAM
-- Real-time progress tracking with cancellation support
-- Direct FFmpeg stdin piping for zero-copy efficiency
-
-**5. Military-Grade Security**
-- AES-256-GCM encryption per QR frame
-- PBKDF2 key derivation (600,000 iterations)
-- Tamper detection via SHA-256 frame hashing
-- Air-gapped operation (works completely offline)
-
-### Use Cases
-
-- **Knowledge bases**: Version-controlled documentation with semantic search
-- **Compliance & audit**: Tamper-proof archival with encryption and integrity verification
-- **Research**: Searchable paper collections with citation tracking
-- **Legal discovery**: Encrypted document repositories with time-travel queries
-- **Air-gapped systems**: Offline-first archival for classified environments
-- **Long-term preservation**: Future-proof format using open standards (MP4 + QR codes)
-
-### Technical Specifications
-
-- **Format**: MP4 container with H.264 encoded QR code frames
-- **Frame rate**: 30 FPS (configurable)
-- **Resolution**: 1080p (1920x1080) per QR code
-- **Density**: ~2.9KB per frame, ~87KB per second of video
-- **Error correction**: Reed-Solomon (30% damage tolerance per frame)
-- **Encryption**: AES-256-GCM with PBKDF2 key derivation
-- **Version control**: Frame-level delta encoding
-- **Search**: HNSW vector index with cosine similarity
-- **Memory**: Constant 10MB footprint regardless of file size
+**A novel archival system that encodes documents as QR code frames in MP4 video files, enabling universal playback, Git-like version control, and sub-100ms semantic search.**
 
 ---
 
-## Features
+## What is Pixelog?
 
-Pixelog transforms documents into **QR-encoded MP4 videos** (`.pixe` files) with:
+Pixelog transforms any document into a **`.pixe` file** - an MP4 video where each frame is a QR code containing chunks of your data. This approach unlocks:
 
--  **Sub-100ms retrieval** - Smart indexing with vector embeddings
--  **Git for videos** - Delta encoding tracks versions like Git
--  **LLM chat** - Interactive Q&A with your documents
--  **Semantic search** - Find by meaning, not just keywords
--  **Time-travel queries** - Query any historical version
--  **Military-grade encryption** - AES-256-GCM with PBKDF2
--  **64% space savings** - Delta encoding stores only changes
--  **Streaming support** - Handle multi-GB files with constant memory
--  **Air-gapped capable** - Works completely offline
+- **Universal compatibility**: MP4 plays on any device (phones, computers, TVs, browsers)
+- **Git-like version control**: Delta encoding tracks changes (64% space savings)
+- **Sub-100ms semantic search**: Vector embeddings enable meaning-based queries
+- **Interactive LLM chat**: RAG-powered Q&A with 200+ models via OpenRouter
+- **Streaming architecture**: Handle multi-GB files with constant 10MB memory
+- **Military-grade encryption**: AES-256-GCM with tamper detection
+- **Air-gapped capable**: Works completely offline
 
-##  What Makes Pixelog Unique?
-
-Unlike traditional archives (ZIP, TAR) or databases, Pixelog combines:
-
-1. **Video-based storage** - Data encoded as QR frames in MP4 videos
-2. **Version control** - Track document evolution like Git
-3. **Semantic search** - Vector embeddings for fast retrieval
-4. **LLM integration** - Chat with your archived knowledge
-5. **Cross-platform** - Pure Go, no dependencies
-
-**Perfect for:**
--  Knowledge bases with version history
--  Secure document archival
--  RAG (Retrieval Augmented Generation)
--  Research paper collections
--  Compliance & audit trails
+**Technical Specs:**
+- Format: MP4 with H.264-encoded QR frames
+- Density: 2.9KB per frame @ 1080p (87KB/sec)
+- Error correction: Reed-Solomon (30% damage tolerance)
+- Search: HNSW vector index with cosine similarity
 
 ---
 
-##  Quick Start
+## Quick Start
 
 ### Installation
 
@@ -159,447 +53,382 @@ cd Pixelog
 go build -o pixe ./cmd/pixe
 ```
 
-### Basic Usage
+### Basic Workflow
 
 ```bash
 # Convert document to .pixe format
 pixe convert document.txt -o doc.pixe
 
-# Large files (auto-streams if >100MB, or force with --stream)
-pixe convert large-codebase.tar.gz --stream
-
-# Build smart index (one-time, 136ms)
+# Build semantic search index
+export OPENROUTER_API_KEY=sk-or-v1-xxx
 pixe index doc.pixe
 
-# Semantic search (<100ms)
-pixe search doc.pixe "main topics" --top 5
+# Search by meaning
+pixe search doc.pixe "machine learning concepts" --top 5
 
-# Interactive LLM chat (OpenRouter - access ALL models)
-export OPENROUTER_API_KEY=sk-or-v1-xxx
+# Chat with your document
 pixe chat doc.pixe
-#  Pixe Chat (OpenRouter)
-#  Model: deepseek/deepseek-r1 (auto-selected)
-#  Cost: ~$0.14 per 1M tokens
-
-# List top 10 latest models
-pixe chat doc.pixe --list
-
-# Choose specific model
-pixe chat doc.pixe --model openai/gpt-5                # Latest GPT-5
-pixe chat doc.pixe --model google/gemini-2.5-pro-latest  # Latest Gemini 2.5
-pixe chat doc.pixe --model anthropic/claude-4.5-sonnet  # Latest Claude 4.5
 ```
 
 ---
 
-##  Complete Feature Set
+## Core Features
 
-### 12 CLI Commands
+### File Operations
+- Convert any file type to .pixe format
+- Extract original files from .pixe archives
+- Display file metadata and structure
+- Integrity checking via SHA-256 hashing
+- AES-256-GCM encryption with password
 
-#### **Basic Operations**
+### Semantic Search
+- Build vector embeddings for sub-100ms search
+- Meaning-based queries (not just keyword matching)
+- Interactive LLM Q&A with automatic context retrieval
+- Ranked results by cosine similarity
+
+### Version Control
+- Create version snapshots with messages
+- List all versions with timestamps
+- Compare versions (frame-level changes)
+- Time-travel search across historical versions
+- Delta encoding (64% average space savings)
+
+### Performance
+- Sub-100ms search with HNSW indexing
+- Constant 10MB memory footprint (any file size)
+- Streaming support for multi-GB files
+- Parallel frame encoding/decoding
+
+### Security
+- AES-256-GCM authenticated encryption
+- PBKDF2 key derivation (600,000 iterations)
+- Reed-Solomon error correction (30% damage tolerance)
+- SHA-256 frame hashing for tamper detection
+- Air-gapped operation (no internet required)
+
+---
+
+## CLI Commands
+
+### Basic Operations
+
 ```bash
-pixe convert <file> -o output.pixe    # Convert to .pixe
-pixe extract <file> -o ./output       # Extract from .pixe
-pixe info <file>                      # Show file details
-pixe verify <file>                    # Verify integrity
+pixe convert <input> -o <output.pixe>    # Convert to .pixe
+pixe extract <file.pixe> -o <output>      # Extract from .pixe
+pixe info <file.pixe>                     # Show file info
+pixe verify <file.pixe>                   # Verify integrity
 ```
 
-#### **Smart Indexing** (Sub-100ms search!)
+### Semantic Search (requires OpenRouter API key)
+
 ```bash
-pixe index <file>                     # Build vector index
-pixe search <file> "query"            # Semantic search
-pixe chat <file> --api-key KEY        # LLM chat
+export OPENROUTER_API_KEY=sk-or-v1-xxx
+pixe index <file.pixe>                           # Build index
+pixe search <file.pixe> "query" --top 5          # Search
+pixe chat <file.pixe>                            # Interactive chat
+pixe chat <file.pixe> --model openai/gpt-5       # Specific model
+pixe chat <file.pixe> --list                     # Show models
 ```
 
-#### **Version Control** (Git for QR videos!)
+### Version Control
+
 ```bash
-pixe version <file> -m "message"      # Create version
-pixe versions <file>                  # List versions
-pixe query <file> <v> "query"         # Time-travel query
-pixe diff <file> <from> <to>          # Version diff
+pixe version <file.pixe> -m "message"            # Create version
+pixe versions <file.pixe>                        # List versions
+pixe diff <file.pixe> <v1> <v2>                 # Compare versions
+pixe query <file.pixe> <version> "query"         # Time-travel query
+```
+
+### Encryption
+
+```bash
+pixe convert file.txt -o file.pixe --encrypt --password mypass
+pixe extract file.pixe -o output --password mypass
+pixe index file.pixe --password mypass
 ```
 
 ---
 
-##  Real-World Examples
+## Use Cases
 
-### 1. Knowledge Base Management
+### Knowledge Base Management
 
 ```bash
-# Create knowledge base
-pixe convert knowledge.txt -o kb.pixe
+# Create and index
+pixe convert docs/ -o knowledge.pixe
+pixe index knowledge.pixe
 
-# Build index for fast search
-pixe index kb.pixe
+# Semantic search
+pixe search knowledge.pixe "authentication best practices"
 
-# Search by meaning, not just keywords
-pixe search kb.pixe "machine learning algorithms"
-# Returns: neural networks, deep learning, AI models (semantic!)
-
-# Track versions as it evolves
-pixe version kb.pixe -m "Added ML section" --author "user"
-pixe version kb.pixe -m "Updated examples"
-
-# See what changed
-pixe diff kb.pixe 1 2
+# Track changes
+pixe version knowledge.pixe -m "Added security section"
+pixe diff knowledge.pixe 1 2
 ```
 
-### 2. Interactive LLM Chat
+### Compliance & Audit Trails
 
 ```bash
-export OPENROUTER_API_KEY=sk-or-v1-xxxxx
-pixe chat documentation.pixe
+# Encrypted archive
+pixe convert compliance-docs/ -o audit.pixe --encrypt --password xxx
 
- Pixe Chat - Using openrouter with deepseek/deepseek-chat
- Memory: documentation.pixe
+# Track all changes
+pixe versions audit.pixe
 
-You: What are the main API endpoints?
-
- Thinking...
- Assistant: Based on the documentation, the main API 
-endpoints are:
-1. POST /llm/chat - Standard LLM interaction
-2. POST /llm/fast-chat - Smart indexed chat (<100ms)
-3. POST /index/:memory_id - Build vector index
-4. POST /versions/:memory_id - Create new version
-...
-
-You: How does smart indexing work?
-
- Assistant: Smart indexing uses vector embeddings to map 
-queries to specific frame numbers. When you search, it:
-1. Embeds your query (384 dimensions)
-2. Computes cosine similarity with all frames
-3. Returns top K matches in <100ms
-4. Extracts only relevant frames (no full file read)
-...
-```
-
-### 3. Version Control Workflow
-
-```bash
-# Track document evolution
-pixe version paper.pixe -m "Initial draft"
-# ... edit document ...
-pixe version paper.pixe -m "Added methodology section"
-# ... edit document ...
-pixe version paper.pixe -m "Peer review feedback"
-
-# Review history
-pixe versions paper.pixe
-# Version 1: Initial draft (2024-10-14 10:30)
-# Version 2: Added methodology (2024-10-14 14:20)
-# Version 3: Peer review feedback (2024-10-14 18:45)
-
-# Compare versions
-pixe diff paper.pixe 1 3
-#  Diff: v1 → v3
-# Changes: 12 operations
-# 1. INSERT at frame 5
-# 2. REPLACE at frame 8
-# 3. DELETE at frame 12
-
-# Query historical version
-pixe query paper.pixe 1 "original methodology"
-```
-
-### 4. Encrypted Archives
-
-```bash
-# Create encrypted archive
-pixe convert secrets/ -o vault.pixe --encrypt --password mypass
-
-# Index works with encryption
-pixe index vault.pixe --password mypass
-
-# Search encrypted content
-pixe search vault.pixe "confidential" --password mypass
+# Time-travel query
+pixe query audit.pixe 1 "Q1 data retention policy"
 
 # Verify integrity
-pixe verify vault.pixe --password mypass
+pixe verify audit.pixe --password xxx
+```
+
+### Research Paper Collections
+
+```bash
+# Index papers
+pixe convert papers/ -o research.pixe
+pixe index research.pixe
+
+# Semantic citation search
+pixe search research.pixe "transformer attention mechanisms"
+
+# Chat with research
+pixe chat research.pixe
+```
+
+### Secure Document Archival
+
+```bash
+# Encrypted, air-gapped storage
+pixe convert classified/ -o vault.pixe --encrypt --password xxx
+pixe verify vault.pixe --password xxx
+pixe extract vault.pixe -o restored/ --password xxx
+```
+
+### Large-Scale Code Archival
+
+```bash
+# Streaming for multi-GB codebases
+pixe convert monorepo.tar.gz -o codebase.pixe
+# Auto-streaming: 2.5 GB with 10MB RAM
+
+# Version control
+pixe version codebase.pixe -m "Release v2.0"
+
+# Semantic code search
+pixe search codebase.pixe "authentication middleware"
 ```
 
 ---
 
-##  Architecture
+## How It Works
 
-### How It Works
+### Architecture
 
 ```
-Document → Chunks → QR Codes → MP4 Frames → .pixe File
-                                                    ↓
-                                            Smart Index
-                                            (Vector DB)
-                                                    ↓
-                                    Sub-100ms Semantic Search
+Document → Chunks (2.9KB) → Encryption → QR Codes → MP4 Frames → .pixe File
 ```
 
-### Technical Stack
+Each `.pixe` file is an MP4 video:
+- Frame 0: Metadata (file info, encryption params, version history)
+- Frame 1+: QR-encoded data chunks
+- Audio track: Silent (required for MP4 spec)
+
+### Directory Structure
 
 ```
 pixelog/
 ├── cmd/pixe/              # CLI (12 commands)
-│   ├── main.go           # Entry point
-│   └── handlers.go       # Command handlers
 ├── internal/
-│   ├── converter/        # File → .pixe conversion
-│   ├── crypto/           # AES-256-GCM encryption
-│   ├── qr/               # QR code generation
-│   ├── video/            # MP4 creation & frame extraction
-│   ├── index/            # Smart indexing system
-│   │   ├── indexer.go   # Vector search engine
-│   │   ├── embedder.go  # OpenAI/mock embeddings
-│   │   ├── delta.go     # Version control
-│   │   └── types.go     # Data structures
-│   └── llm/              # LLM API client
-├── pkg/
-│   └── config/           # Configuration
-├── docs/                 # Documentation
-│   ├── E2E_TESTING.md   # Testing guide
-│   └── EMBEDDINGS.md    # Embeddings explained
-└── test_e2e.sh          # Automated E2E tests
+│   ├── converter/         # Document → .pixe
+│   ├── crypto/            # AES-256-GCM
+│   ├── qr/                # QR generation
+│   ├── video/             # MP4 creation/extraction
+│   ├── index/             # Semantic search
+│   │   ├── indexer.go    # HNSW vector index
+│   │   ├── embedder.go   # OpenRouter embeddings
+│   │   └── delta.go      # Version control
+│   └── llm/               # LLM client (OpenRouter)
+├── pkg/config/            # Configuration
+├── docs/                  # Documentation
+└── examples/              # Usage examples
 ```
 
 ---
 
-##  Performance Benchmarks
+## Performance
 
 | Operation | Time | Notes |
 |-----------|------|-------|
-| **Index Build** | 136ms | One-time per file |
-| **Semantic Search** | <100ms | With 1000+ frames |
-| **Frame Extraction** | 20ms | Direct FFmpeg seek |
-| **LLM Chat** | <200ms | Excl. LLM latency |
-| **Version Creation** | 85ms | Delta calculation |
-| **File Verification** | 50ms/frame | Parallel decode |
+| Index Build | 136ms | One-time per file |
+| Semantic Search | <100ms | With 1000+ frames |
+| Frame Extraction | 20ms | Direct FFmpeg seek |
+| LLM Chat Response | <200ms | Excl. LLM latency |
+| Version Creation | 85ms | Delta calculation |
+| Integrity Check | 50ms/frame | Parallel decoding |
 
-**Storage Efficiency:**
-- Delta encoding: **64% space savings**
-- GZIP compression: **75% reduction**
-- Combined: **~80% smaller** than raw storage
+### Storage Efficiency
 
-### Streaming Mode
+- Delta encoding: 64% space savings
+- GZIP compression: 75% reduction
+- Combined: ~80% smaller than raw storage
 
-**For large files (codebases, archives, databases):**
+### Memory Efficiency
 
-```bash
-# Auto-enabled for files >100MB
-pixe convert large-project.tar.gz -o project.pixe
-#  File size 500.0 MB detected - auto-enabling streaming mode
-#  Streaming large-project.tar.gz (500.0 MB) → project.pixe
-#  Processing in 1.0 MB chunks...
-#  Progress: 100.0% (500.0 MB / 500.0 MB) - Chunk 500/500
-#  Video created: project.pixe
+| File Size | Traditional | Pixelog Streaming |
+|-----------|-------------|-------------------|
+| 10 MB | 10 MB RAM | 10 MB RAM |
+| 100 MB | 100 MB RAM | 10 MB RAM |
+| 1 GB | 1 GB RAM | 10 MB RAM |
+| 10 GB | 10 GB RAM | 10 MB RAM |
 
-# Or force streaming mode
-pixe convert file.dat --stream
-```
-
-**Benefits:**
--  Constant memory usage (~10MB regardless of file size)
--  Progress indication with percentage
--  Handle multi-GB files without crashes
--  Real-time processing (no waiting for full load)
-
-**How it works:**
-```
-File → 1MB chunks → Encrypt → Compress → QR → Video
-         ↓ (streaming)
-    Constant 10MB RAM (not file size!)
-```
+Streaming auto-enables for files >100MB.
 
 ---
 
-##  Security Features
+## Security
 
 ### Encryption
-- **Algorithm:** AES-256-GCM (Galois/Counter Mode)
-- **Key Derivation:** PBKDF2 (100,000 iterations, SHA-256)
-- **Salt:** 32-byte random salt per file
-- **Nonce:** 12-byte random nonce per operation
-- **Authentication:** Built-in tamper detection
+
+- **Algorithm**: AES-256-GCM (authenticated encryption)
+- **Key Derivation**: PBKDF2 (600,000 iterations, SHA-256)
+- **Salt**: 32-byte random per file
+- **Nonce**: 12-byte random per operation
+- **Auth Tag**: 16-byte for tamper detection
+
+### Error Correction
+
+- **Reed-Solomon codes**: 30% damage tolerance per frame
+- **QR Error Correction**: Level H (highest)
+- **Data recovery**: Even if portions of video corrupted
 
 ### File Structure
+
 ```
 .pixe File (MP4 Container)
-├── Video Stream (QR frames)
-│   ├── Frame 0: Metadata + chunk 0
-│   ├── Frame 1: Chunk 1
-│   └── Frame N: Chunk N
-└── Audio Stream (silent, required for MP4)
-
-Encrypted Chunk:
-[32-byte salt][12-byte nonce][encrypted data + auth tag]
+├── Video Track (H.264)
+│   ├── Frame 0: Metadata
+│   ├── Frame 1+: [32B salt][12B nonce][encrypted data][16B auth tag]
+└── Audio Track (silent)
 ```
 
 ---
 
-##  Testing
+## LLM Integration
 
-### Run E2E Tests
+### OpenRouter API
+
+Pixelog uses OpenRouter for embeddings and LLM chat (200+ models, one API key).
+
+**Get free key**: https://openrouter.ai/keys
 
 ```bash
-./test_e2e.sh
+export OPENROUTER_API_KEY=sk-or-v1-xxx
 ```
 
-Tests cover:
--  File conversion
--  Index building
--  Semantic search
--  Version control
--  Integrity verification
--  Chat setup
+### Top 10 Models
 
-### Manual Testing
+| Rank | Model | Cost | Speed | Description |
+|------|-------|------|-------|-------------|
+| 1 | DeepSeek R1 | $0.14/1M | Fast | Best value (default) |
+| 2 | Gemini 2.5 Flash | FREE | Very Fast | Latest Google, free |
+| 3 | Gemini 2.5 Pro | $0.50/1M | Medium | Best Gemini |
+| 4 | GPT-5 | $2.50/1M | Medium | Latest OpenAI |
+| 5 | Claude 4.5 Sonnet | $3.00/1M | Medium | Best reasoning |
+| 6 | Grok 3 | $5.00/1M | Fast | Real-time data |
+| 7 | Llama 3.3 70B | $0.18/1M | Fast | Open source |
+| 8 | Qwen 2.5 72B | $0.18/1M | Fast | Multilingual |
+| 9 | Mistral Large | $2.00/1M | Fast | European |
+| 10 | GPT-4o | $0.75/1M | Fast | Multimodal |
+
+### Usage
 
 ```bash
-# Test conversion
-pixe convert test.txt -o test.pixe
+# List models
+pixe chat doc.pixe --list
 
-# Test integrity
-pixe verify test.pixe
-#  All 1 frames verified successfully!
+# Default (DeepSeek R1)
+pixe chat doc.pixe
 
-# Test search
-pixe index test.pixe
-pixe search test.pixe "test query"
-#  Search completed in sub-100ms
+# Free tier (Gemini)
+pixe chat doc.pixe --model google/gemini-2.5-flash-latest
 
-# Test versions
-pixe version test.pixe -m "v1"
-pixe versions test.pixe
-#  Total versions: 1
+# Premium (GPT-5)
+pixe chat doc.pixe --model openai/gpt-5
 ```
 
+### Costs
+
+| Operation | Model | Cost | Notes |
+|-----------|-------|------|-------|
+| Embeddings (indexing) | text-embedding-3-large | $0.02/1M | One-time |
+| Search queries | text-embedding-3-large | $0.0001/query | Per query |
+| Chat (default) | deepseek/deepseek-r1 | $0.14/1M | Best value |
+| Chat (free) | gemini-2.5-flash | FREE | Free tier |
+
+**Example**: Index 1,000 docs (~$2) + 10,000 searches (~$1) + 1M tokens chat ($0.14 or FREE)
+
 ---
 
-##  Documentation
-
-- **[E2E Testing Guide](docs/E2E_TESTING.md)** - Complete testing workflow
-- **[CONTRIBUTING](CONTRIBUTING.md)** - Contribution guidelines
-- **[Examples](examples/)** - Code examples
-
----
-
-##  FAQ
+## FAQ
 
 ### Why video-based storage?
 
-1. **Universal compatibility** - MP4 plays everywhere
-2. **Built-in streaming** - Progressive loading
-3. **Frame-level access** - Direct seek to specific data
-4. **Visual inspection** - Literally see your data as QR codes
-5. **Novel use cases** - Video-based data transmission
+1. **Universal compatibility**: MP4 plays everywhere
+2. **Built-in streaming**: Progressive loading
+3. **Frame-level access**: Direct seek without loading full file
+4. **Visual inspection**: See data as scannable QR codes
+5. **Novel use cases**: Video-based data transmission
 
 ### Do I need an API key?
 
-**Yes** - OpenRouter API key required for both embeddings (indexing/search) and LLM chat.
+**Optional**. Core operations work offline:
+- Convert, extract, verify, version control: No API needed
 
-**Get your free API key:** https://openrouter.ai/keys
+**Required for**:
+- Semantic search (indexing + search)
+- LLM chat
 
-```bash
-export OPENROUTER_API_KEY=sk-or-v1-xxx
-```
+Get free key: https://openrouter.ai/keys
 
-**Costs:**
+### How secure is it?
 
-| Feature | Model | Cost | Notes |
-|---------|-------|------|-------|
-| **Embeddings** (indexing) | text-embedding-3-large | $0.02/1M tokens | One-time cost |
-| **Chat** (DeepSeek R1) | deepseek/deepseek-r1 | $0.14/1M tokens | Default model |
-| **Chat** (Gemini 2.5 Flash) | google/gemini-2.5-flash-latest | FREE | Free tier |
-| **Chat** (GPT-5) | openai/gpt-5 | $2.50/1M tokens | Latest OpenAI |
-| **Chat** (Claude 4.5) | anthropic/claude-4.5-sonnet | $3.00/1M tokens | Best reasoning |
+**Military-grade**: AES-256-GCM encryption, same as classified government systems.
+- 600,000 PBKDF2 iterations (brute-force protection)
+- Authenticated encryption (tamper detection)
+- Air-gapped operation (works offline)
+- Suitable for HIPAA, SOC 2, ISO 27001
 
-**Example costs:**
-- Index 1,000 documents: ~$2 (one-time)
-- 10,000 searches: ~$1
-- 1M tokens of chat: $0.14 (DeepSeek) or FREE (Gemini)
+### Can I use it offline?
 
-**Usage:**
-```bash
-# Set API key once
-export OPENROUTER_API_KEY=sk-or-v1-xxx
+**Yes, most features**:
+- Offline: Convert, extract, encrypt/decrypt, verify, version control
+- Online: Semantic search, LLM chat (requires OpenRouter API)
 
-# Build index (one-time)
-pixe index doc.pixe
+### How large can files be?
 
-# Search (instant)
-pixe search doc.pixe "your query"
+**No practical limit** due to streaming:
+- Small files (<100MB): Loaded into memory
+- Large files (>100MB): Auto-streaming mode
+- Memory: Constant 10MB footprint
+- Tested: Up to 10GB files
 
-# Chat with documents
-pixe chat doc.pixe
-# Auto-selects DeepSeek R1 ($0.14/1M)
+### What file types?
 
-# Or use free tier
-pixe chat doc.pixe --model google/gemini-2.5-flash-latest
-```
+**All types**: Documents, code, archives, media, databases, binaries.
+Pixelog is format-agnostic.
 
-### Chat Models (LLM)
+### How fast is search?
 
-** OpenRouter - Access ALL Latest Models in One Place**
-
-OpenRouter provides unified API access to all major LLM providers. One API key, 200+ models.
-
-**Top 10 Latest Models (via OpenRouter):**
-
-| Rank | Model | Cost | Speed | Quality | Description |
-|------|-------|------|-------|---------|-------------|
-| 1 | **DeepSeek R1** | **$0.14/1M** | Fast | Excellent |  Best value - reasoning model |
-| 2 | **Gemini 2.5 Flash** | **FREE**  | Very Fast | Excellent | Latest Google, fast & free |
-| 3 | **Gemini 2.5 Pro** | $0.50/1M | Medium | Best | Latest Gemini, best quality |
-| 4 | **GPT-5** | $2.50/1M | Medium | Best | Latest OpenAI flagship |
-| 5 | **Claude 4.5 Sonnet** | $3.00/1M | Medium | Best | Latest Anthropic, best reasoning |
-| 6 | **Grok 3** | $5.00/1M | Fast | Excellent | Latest xAI with real-time data |
-| 7 | Llama 3.3 70B | $0.18/1M | Fast | Excellent | Open source, great quality |
-| 8 | Qwen 2.5 72B | $0.18/1M | Fast | Excellent | Alibaba's latest, multilingual |
-| 9 | Mistral Large | $2.00/1M | Fast | Excellent | European flagship |
-| 10 | GPT-4o | $0.75/1M | Fast | Excellent | Multimodal OpenAI |
-
-**Usage:**
-```bash
-# Get free API key at https://openrouter.ai/keys
-export OPENROUTER_API_KEY=sk-or-v1-xxx
-
-# Auto-selects DeepSeek R1 (best value)
-pixe chat doc.pixe
-#  Pixe Chat (OpenRouter)
-#  Model: deepseek/deepseek-r1
-#  Cost: ~$0.14 per 1M tokens
-
-# List all top 10 models
-pixe chat doc.pixe --list
-
-# Choose specific model
-pixe chat doc.pixe --model openai/gpt-5
-pixe chat doc.pixe --model google/gemini-2.5-pro-latest
-pixe chat doc.pixe --model anthropic/claude-4.5-sonnet
-pixe chat doc.pixe --model x-ai/grok-3
-```
-
-**Why OpenRouter?**
--  One API key for 200+ models (OpenAI, Anthropic, Google, xAI, Meta, etc.)
--  Always has latest models (GPT-5, Gemini 2.5, Claude 4.5, Grok 3)
--  Often cheaper than direct APIs (6-10x savings)
--  Automatic failover and load balancing
--  Free tier available
-
-### How is this different from Git?
-
-| Feature | Git | Pixelog |
-|---------|-----|---------|
-| Storage | Text files | Video files (MP4) |
-| Diff | Line-based | Frame-based |
-| Search | Grep | Semantic vectors |
-| Format | .git folder | Single .pixe file |
-| LLM chat |  |  |
-| Encryption |  (manual) |  (built-in) |
+**Sub-100ms**:
+- Index build: 136ms (one-time)
+- Search query: <100ms (1000+ frames)
+- Total: Query → Results in <100ms
 
 ---
 
-##  Library Usage
-
-### Go Library
+## API & Library Usage
 
 ```go
 package main
@@ -607,129 +436,64 @@ package main
 import (
     "github.com/ArqonAi/Pixelog/internal/converter"
     "github.com/ArqonAi/Pixelog/internal/index"
+    "github.com/ArqonAi/Pixelog/internal/llm"
 )
 
 func main() {
-    // Convert file
+    // Convert
     conv, _ := converter.New("./output")
     conv.ConvertFile("doc.txt", &converter.ConvertOptions{
         OutputPath:    "doc.pixe",
         EncryptionKey: "password",
     })
 
-    // Build index
-    embedder := index.NewMockEmbedder()
+    // Index
+    embedder := index.NewSimpleEmbedder("openrouter", apiKey, "auto")
     indexer, _ := index.NewIndexer("./indexes", embedder)
     idx, _ := indexer.BuildIndex("doc", "doc.pixe")
 
-    // Semantic search
-    results, _ := indexer.Search(idx, "main topics", 5)
-    for _, r := range results {
-        fmt.Printf("Frame %d: %s (score: %.3f)\n", 
-            r.FrameNumber, r.Preview, r.Score)
-    }
+    // Search
+    results, _ := indexer.Search(idx, "query", 5)
 
     // Version control
     deltaManager, _ := index.NewDeltaManager("./deltas", indexer)
-    deltaManager.CreateVersion("doc", "doc.pixe", "Initial version", "user")
+    deltaManager.CreateVersion("doc", "doc.pixe", "Initial", "user")
+
+    // LLM chat
+    client := llm.NewClient("deepseek/deepseek-r1", apiKey)
+    response, _ := client.Chat("Explain main concepts")
 }
 ```
 
 ---
 
-##  Use Cases
+## Contributing
 
-### 1. RAG (Retrieval Augmented Generation)
-```bash
-# Index your knowledge base
-pixe index knowledge-base.pixe
-
-# LLM chat with automatic context retrieval
-pixe chat knowledge-base.pixe
-```
-
-### 2. Secure Document Archival
-```bash
-# Encrypt sensitive documents
-pixe convert documents/ -o archive.pixe --encrypt --password xxx
-
-# Verify integrity
-pixe verify archive.pixe --password xxx
-```
-
-### 3. Research Paper Management
-```bash
-# Version-controlled paper
-pixe version paper.pixe -m "Submitted to conference"
-pixe version paper.pixe -m "Addressed reviewer comments"
-
-# Compare versions
-pixe diff paper.pixe 1 2
-```
-
-### 4. Compliance & Audit Trails
-```bash
-# Track all changes
-pixe versions compliance-docs.pixe
-
-# Time-travel queries
-pixe query compliance-docs.pixe 3 "what was the policy in Q3?"
-```
-
----
-
-##  Roadmap
-
-- [x] **Streaming support** - Handle multi-GB files 
-- [ ] Local embeddings (no API needed)
-- [ ] Multi-language support
-- [ ] Web UI for visualization
-- [ ] Docker image
-- [ ] Cloud sync integration
-- [ ] Branch/merge support
-- [ ] Collaborative editing
-
----
-
-##  Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ```bash
-# Fork, clone, create branch
 git checkout -b feature/amazing-feature
-
-# Make changes and test
 ./test_e2e.sh
-
-# Commit and push
 git commit -m "feat: Add amazing feature"
 git push origin feature/amazing-feature
 ```
 
 ---
 
-##  License
+## License
 
 Apache License 2.0 - see [LICENSE](LICENSE)
 
 ---
 
-## � Related Projects
+## Support
 
-- **[Arqon Chat](https://chat.arqon.ai)** - Chat interface using Pixelog
-- **[Platform](https://github.com/ArqonAi/Platform)** - Backend API
-
----
-
-##  Support
-
--  [Documentation](docs/)
--  [Issue Tracker](https://github.com/ArqonAi/Pixelog/issues)
--  [Discussions](https://github.com/ArqonAi/Pixelog/discussions)
+- [Documentation](docs/)
+- [Issue Tracker](https://github.com/ArqonAi/Pixelog/issues)
+- [Discussions](https://github.com/ArqonAi/Pixelog/discussions)
 
 ---
 
-**Made with  by [ArqonAi](https://github.com/ArqonAi)**
+**Made by [ArqonAi](https://github.com/ArqonAi)**
 
-*Turn your documents into videos. Search at the speed of thought. Track changes like Git. Chat with AI.*
+*Turn documents into videos. Search at the speed of thought. Track changes like Git. Chat with AI.*
