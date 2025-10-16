@@ -428,7 +428,114 @@ Pixelog is format-agnostic.
 
 ---
 
-## API & Library Usage
+## Platform API
+
+### Hosted Platform
+
+Use the hosted Pixelog platform at **https://chat.arqon.ai** for a web-based interface with:
+
+- Drag & drop file conversion
+- Real-time progress tracking
+- Interactive LLM chat with your .pixe files
+- Semantic search with visual interface
+- No CLI installation required
+
+### REST API Endpoints
+
+The platform provides a REST API for integration:
+
+```bash
+# Convert file to .pixe
+POST https://chat.arqon.ai/api/convert
+Content-Type: multipart/form-data
+
+{
+  "file": <binary>,
+  "encrypt": true,
+  "password": "optional"
+}
+
+Response:
+{
+  "memory_id": "doc123",
+  "file_path": "/memories/doc123.pixe",
+  "size": "52KB",
+  "frames": 3
+}
+
+# Build search index
+POST https://chat.arqon.ai/api/index/:memory_id
+
+Response:
+{
+  "index_id": "idx123",
+  "dimensions": 3072,
+  "frame_count": 3
+}
+
+# Semantic search
+POST https://chat.arqon.ai/api/search
+
+{
+  "memory_id": "doc123",
+  "query": "machine learning concepts",
+  "top_k": 5
+}
+
+Response:
+{
+  "results": [
+    {
+      "frame_number": 2,
+      "score": 0.92,
+      "preview": "Neural networks and deep learning..."
+    }
+  ]
+}
+
+# LLM chat
+POST https://chat.arqon.ai/api/chat
+
+{
+  "memory_id": "doc123",
+  "message": "Explain the main topics",
+  "model": "deepseek/deepseek-r1"
+}
+
+Response:
+{
+  "response": "The main topics are...",
+  "context_frames": [2, 5, 7]
+}
+
+# Create version
+POST https://chat.arqon.ai/api/versions/:memory_id
+
+{
+  "message": "Updated documentation",
+  "author": "user@example.com"
+}
+```
+
+### WebSocket Support
+
+Real-time progress tracking for long-running operations:
+
+```javascript
+const ws = new WebSocket('wss://chat.arqon.ai/ws/progress/:memory_id');
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log(`Progress: ${data.percentage}%`);
+  // { percentage: 75, status: "Converting frame 3/4" }
+};
+```
+
+---
+
+## Go Library Usage
+
+For local/self-hosted deployments:
 
 ```go
 package main
@@ -486,11 +593,20 @@ Apache License 2.0 - see [LICENSE](LICENSE)
 
 ---
 
+## Related Projects
+
+- **[Arqon Chat](https://chat.arqon.ai)** - Hosted platform with web UI, drag & drop interface, and real-time progress tracking
+- **[Platform Repository](https://github.com/ArqonAi/Platform)** - Backend API and React frontend for self-hosting
+
+---
+
 ## Support
 
-- [Documentation](docs/)
-- [Issue Tracker](https://github.com/ArqonAi/Pixelog/issues)
-- [Discussions](https://github.com/ArqonAi/Pixelog/discussions)
+- **Platform**: [chat.arqon.ai](https://chat.arqon.ai) - Hosted web interface
+- **Documentation**: [docs/](docs/)
+- **Issues**: [GitHub Issues](https://github.com/ArqonAi/Pixelog/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ArqonAi/Pixelog/discussions)
+- **API Reference**: See [Platform API](#platform-api) section above
 
 ---
 
