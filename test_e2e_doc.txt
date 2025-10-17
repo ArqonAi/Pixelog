@@ -1,0 +1,21 @@
+PIXELOG E2E TEST DOCUMENT
+
+This document tests the complete Pixelog workflow including:
+
+1. Conversion to .pixe format
+2. Smart indexing with vector embeddings
+3. Semantic search capabilities
+4. Interactive LLM chat
+5. Version control and time-travel queries
+
+The main topics covered are:
+- File archival using QR codes
+- Delta encoding for efficient storage
+- Offline-first design philosophy
+- Semantic search without servers
+
+Key features:
+- Sub-100ms retrieval times
+- Git-like version control
+- Works completely air-gapped
+- Pure Go implementation
