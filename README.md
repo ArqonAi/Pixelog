@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="arqon-nextr-10.svg" alt="Arqon AI Banner" width="100%">
+</p>
+
 # Pixelog
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
