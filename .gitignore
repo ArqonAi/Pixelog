@@ -1,0 +1,77 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Go workspace file
+go.work
+
+# Dependency directories
+vendor/
+
+# Output directory
+output/
+*.pixe
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+/tmp/
+*.tmp
+*.log
+
+# Test and development files
+test/
+tests/
+test_*.go
+test_*.txt
+test-*.txt
+test-*.pixe
+cli-test.*
+create-test-*.js
+test-files/
+indexes/
+deltas/
+extracted-cli/
+extracted*.txt
+consistency-test.txt
+backend-cloud-example.md
+
+# Backup files
+*.backup
+*.old
+*.bak
+README.md.backup
+README.md.with-emojis
+
+# Build artifacts
+pixelog
+pixelog-cli
+pixelog-server
+pixelog-prod
+pixe-core/
+pixe.backup
+/pixe
+/pixe-bench
+/pixe-linux
+/pixe-prod
+/pixe-server
+
+# Local archives / scratch
+_archive/
