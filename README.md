@@ -4,7 +4,6 @@
 
 # Pixelog
 
-[![Tests](https://github.com/ArqonAi/Pixelog/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/ArqonAi/Pixelog/actions/workflows/test.yml)
 [![Release](https://github.com/ArqonAi/Pixelog/actions/workflows/release.yml/badge.svg)](https://github.com/ArqonAi/Pixelog/actions/workflows/release.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ArqonAi/Pixelog)](https://goreportcard.com/report/github.com/ArqonAi/Pixelog)
 [![Go Reference](https://pkg.go.dev/badge/github.com/ArqonAi/Pixelog.svg)](https://pkg.go.dev/github.com/ArqonAi/Pixelog)
