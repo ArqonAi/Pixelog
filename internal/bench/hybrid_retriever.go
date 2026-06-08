@@ -22,6 +22,13 @@ type HybridWeights struct {
 	Keyword float64 // exact token-overlap between capitalised question
 	// entities and the session text (entities that embeddings miss)
 	RecencyDecay float64 // small boost for more recent sessions on tie
+	// FactBoost scales the bonus applied to a turn that is the source
+	// of a fact whose subject matches an entity in the question. This
+	// is the retrieval arm of the Pixelog micro-graph: a question
+	// like "Where did Caroline move from?" boosts the source turn of
+	// (Caroline, moved-from, Sweden) even when the turn's lexical
+	// overlap with the question is weak.
+	FactBoost float64
 }
 
 // DefaultHybridWeights are the weights proven on LongMemEval s (500 QA).
@@ -33,6 +40,19 @@ func DefaultHybridWeights() HybridWeights {
 		Preference:   0.3,
 		Keyword:      0.4,
 		RecencyDecay: 0.05,
+		// FactBoost is multiplied by the per-fact confidence at score
+		// time (see scoreTurnsGlobal), so the effective boost for a
+		// source turn is FactBoost × confidence ∈ [0, FactBoost].
+		// A confidence-0.9 LLM / favorite-X rule fact contributes
+		// 1.8 × 0.9 = 1.62 — enough to dominate BM25 (0.6) + Keyword
+		// (0.4) for direct-lookup questions. A low-precision 0.75
+		// rule match contributes 1.35, which beats lexical noise but
+		// does not overpower a strongly-matching semantic+BM25 pair.
+		// This replaces the previous binary 1.5-flag design: boosts
+		// now scale with extractor precision, which is the principled
+		// behaviour — a high-confidence fact deserves stronger pull
+		// than a hedged one.
+		FactBoost: 1.8,
 	}
 }
 
@@ -53,6 +73,19 @@ type sessionIndex struct {
 	turnAvgDL   float64
 	turnDocFreq map[string]int
 	turnN       int
+
+	// facts is the rule-extracted micro-graph for this conversation.
+	// Populated during buildSessionIndex so every Retrieve / score
+	// path gets O(1) subject lookup without another pass over turns.
+	// May be nil on indices built from empty turn lists.
+	facts *factIndex
+	// profiles holds per-entity time-anchored timelines built from
+	// the pre-supersession fact set. Used at QA time to render a
+	// "KNOWN TIMELINES" preamble for questions whose subject has a
+	// profile — the Lever-2 mechanism for closing LoCoMo's temporal
+	// reasoning gap. Nil when profiles are disabled or no facts were
+	// extracted.
+	profiles *profileIndex
 }
 
 type sessionRecord struct {
@@ -71,17 +104,42 @@ type sessionRecord struct {
 }
 
 // turnRecord carries the per-turn payload required to rank turns
-// globally (BM25, keyword, temporal). We deliberately do NOT embed
-// every turn — the embedder is hit once per session for cost reasons,
-// and BM25 alone is a strong turn-level signal because turns are short
-// and topic-dense.
+// globally (BM25, keyword, temporal, semantic).
+//
+// Semantic similarity at turn granularity is the single biggest fix
+// for direct-lookup single-hop questions where the gold turn uses a
+// paraphrase the lexical signals miss (e.g. "Caroline's relationship
+// status?" matching "I'm currently single" rather than "...status..."
+// keywords). Turn embeddings are populated lazily by the retriever
+// once per index-build and cached inside the sessionIndex; the embed
+// fanout is bounded by embedTurnConcurrency (8) so OpenAI / Ollama
+// providers stay within sane wall-clock budgets even on 2k-turn
+// LoCoMo conversations.
 type turnRecord struct {
-	ID       string
+	ID        string
 	SessionID string
-	Date     time.Time
-	Text     string
-	Tokens   []string
-	tf       map[string]int
+	Date      time.Time
+	// Text is the original "<speaker>: <utterance>" line. This is
+	// what gets shown to the answerer LLM as retrieved context — it
+	// MUST stay clean (no coref hint suffix, no rewrites) so the
+	// answerer never sees synthetic preprocessor output.
+	Text string
+	// IndexText is the same line annotated with coreference hints
+	// (resolved speaker / addressee / recent-entity names). Used by
+	// the lexical scorers (BM25, entity, preference regex) and by the
+	// embedder. Equal to Text when the coref preprocessor produced
+	// no hints. NEVER displayed to the answerer.
+	IndexText string
+	Tokens    []string
+	tf        map[string]int
+	// Embedding is the per-turn embedding produced by the configured
+	// memory.Embedder, computed over IndexText (so coref hints flow
+	// into the semantic vector). Nil when the embedder hasn't been
+	// run yet, when turn embedding is disabled
+	// (PixelogConfig.EmbedTurns=false), or when the turn text is
+	// empty. Callers MUST treat nil as "no semantic signal available"
+	// and fall back to lexical scores only.
+	Embedding []float32
 }
 
 // buildSessionIndex groups allTurns by SessionID and precomputes BM25
@@ -89,10 +147,32 @@ type turnRecord struct {
 // granularity (new — used for the global turn ranking that lets K=5
 // recall hit on turn-level evidence even when the parent session ranks
 // outside the top-K sessions).
+// buildSessionIndex (no-extractor overload) builds the index using
+// the default rule-based fact extractor. Provided for tests and
+// callers that don't need LLM-driven fact extraction.
 func buildSessionIndex(turns []Turn) *sessionIndex {
+	return buildSessionIndexWith(turns, nil)
+}
+
+// buildSessionIndexWith is the production entry point. Callers pass
+// the FactExtractor they want used during the fact-graph build
+// pass. nil falls back to ruleFactExtractor — same behaviour as
+// the no-arg form.
+func buildSessionIndexWith(turns []Turn, factExtractor FactExtractor) *sessionIndex {
+	// Coreference preprocessor. Runs once per index build and
+	// produces per-turn IndexHints (resolved speaker / addressee /
+	// recent-entity names). Hints are appended to the indexed text
+	// so BM25 / entity / semantic scorers can match pronoun-only
+	// turns against questions that reference the antecedent — the
+	// dominant remaining failure mode on conversational benchmarks.
+	// Hints NEVER appear in the displayed turn text shown to the
+	// answerer (see turnRecord.Text vs turnRecord.IndexText).
+	augmented := resolveCoref(turns)
+
 	order := []string{}
 	group := map[string]*sessionRecord{}
-	for _, t := range turns {
+	for _, at := range augmented {
+		t := at.Turn
 		sid := t.SessionID
 		if sid == "" {
 			sid = "default"
@@ -114,11 +194,24 @@ func buildSessionIndex(turns []Turn) *sessionIndex {
 		if speaker == "" {
 			speaker = t.Role
 		}
-		line := speaker + ": " + t.Text
+		// displayLine is the bare "speaker: text" shown to the
+		// answerer. indexLine is displayLine + coref hints, used only
+		// by the retrieval-side lexical / semantic scorers. The two
+		// are kept strictly separate so a coref miss can never
+		// confuse the answerer with a wrong rewrite.
+		displayLine := speaker + ": " + t.Text
+		indexLine := displayLine
+		if at.IndexHints != "" {
+			indexLine = displayLine + " [ctx: " + at.IndexHints + "]"
+		}
 		if rec.Text != "" {
 			rec.Text += "\n"
 		}
-		rec.Text += line
+		// Session-level text uses indexLine because the session
+		// scorer is purely retrieval-side; sessions are never
+		// directly displayed to the answerer (only their member
+		// turns' Text fields are).
+		rec.Text += indexLine
 		if t.TurnID != "" {
 			rec.TurnIDs = append(rec.TurnIDs, t.TurnID)
 		}
@@ -129,10 +222,11 @@ func buildSessionIndex(turns []Turn) *sessionIndex {
 			ID:        t.TurnID,
 			SessionID: sid,
 			Date:      t.Timestamp,
-			Text:      line,
+			Text:      displayLine,
+			IndexText: indexLine,
 			tf:        map[string]int{},
 		}
-		tRec.Tokens = tokeniseText(line)
+		tRec.Tokens = tokeniseText(indexLine)
 		for _, tok := range tRec.Tokens {
 			tRec.tf[tok]++
 		}
@@ -178,6 +272,26 @@ func buildSessionIndex(turns []Turn) *sessionIndex {
 	idx.turnN = totalTurns
 	if totalTurns > 0 {
 		idx.turnAvgDL = float64(totalTurnDL) / float64(totalTurns)
+	}
+	// Build the fact micro-graph from the ORIGINAL turn list (not the
+	// coref-augmented one) so rule patterns match against the source
+	// utterance exactly as authored — coref hints would corrupt
+	// regex anchors like "\bi(?:'m| am)\s+". The fact index gives the
+	// retriever O(1) subject lookup for direct-fact questions. When
+	// the caller didn't supply an extractor, fall back to the rule
+	// extractor — preserves the previous default behaviour.
+	if factExtractor == nil {
+		factExtractor = RuleFactExtractor()
+	}
+	idx.facts = buildFactIndex(turns, factExtractor)
+	// Build per-entity time-anchored profiles from the pre-supersession
+	// fact set so timelines preserve historical (now-superseded) facts
+	// that temporal-diff questions need ("how long between X and Y?").
+	// Cheap — O(F) over facts we already extracted — so we build it
+	// unconditionally and let the retriever decide whether to render
+	// it into the preamble (gated by m.profilePreamble).
+	if idx.facts != nil {
+		idx.profiles = buildProfileIndex(idx.facts.allRaw)
 	}
 	return idx
 }
@@ -306,10 +420,9 @@ type scoredTurn struct {
 }
 
 // scoreTurnsGlobal ranks every individual turn against the query and
-// returns the top-N best-matching turns across the entire corpus. We
-// score with turn-level BM25 + entity overlap + preference cues. Turn
-// embeddings are NOT computed (one-per-session embeddings keep query
-// latency bounded), so semantic similarity is omitted at this layer.
+// returns the top-N best-matching turns across the entire corpus. The
+// signals are: turn-level BM25 + temporal + preference + entity
+// overlap + (when present) per-turn semantic similarity.
 //
 // Why this exists: many benchmark cases (notably LoCoMo D{conv}:{msg}
 // evidence) require returning a *turn ID* in the top-K. The session-
@@ -317,11 +430,34 @@ type scoredTurn struct {
 // sessions — a turn that is a perfect match for a question may live in
 // a session whose other turns drown its BM25 contribution. Ranking
 // turns directly, in parallel with sessions, restores that signal.
-func (idx *sessionIndex) scoreTurnsGlobal(query string, weights HybridWeights, n int) []scoredTurn {
+//
+// queryEmb may be nil for callers that don't have a cached query
+// embedding handy; in that case the semantic component is skipped and
+// the function behaves as the original lexical-only turn ranker.
+func (idx *sessionIndex) scoreTurnsGlobal(query string, queryEmb []float32, weights HybridWeights, n int) []scoredTurn {
 	qTokens := tokeniseText(query)
 	qDate, qDateSet := guessQueryDate(query)
 	qIsPreference := preferenceRE.MatchString(query)
 	qEntities := extractEntities(query)
+
+	// Fact-graph pre-pass: map each source-turn ID to the MAXIMUM
+	// confidence of any fact whose subject matches the question's
+	// capitalised entities. A turn that's the source of multiple
+	// matching facts takes the highest-confidence fact's value, so
+	// it can't be penalised for also carrying a lower-precision
+	// match. The per-turn boost is FactBoost × confidence, yielding
+	// a smooth graded signal rather than a binary 0/1 flag.
+	factTurnConf := map[string]float64{}
+	if idx.facts != nil {
+		for _, f := range idx.facts.Lookup(qEntities) {
+			if f.SourceTurnID == "" {
+				continue
+			}
+			if f.Confidence > factTurnConf[f.SourceTurnID] {
+				factTurnConf[f.SourceTurnID] = f.Confidence
+			}
+		}
+	}
 
 	var out []scoredTurn
 	for si := range idx.sessions {
@@ -339,21 +475,49 @@ func (idx *sessionIndex) scoreTurnsGlobal(query string, weights HybridWeights, n
 				}
 			}
 			pref := 0.0
-			if qIsPreference && preferenceRE.MatchString(tr.Text) {
+			// Use IndexText (augmented with coref hints) for the
+			// retrieval-side preference / entity match. Falls back to
+			// Text when an older code path bypassed buildSessionIndex
+			// or the coref preprocessor produced no hints.
+			indexT := tr.IndexText
+			if indexT == "" {
+				indexT = tr.Text
+			}
+			if qIsPreference && preferenceRE.MatchString(indexT) {
 				pref = 1.0
 			}
-			kw := idx.entityScore(tr.Text, qEntities)
+			kw := idx.entityScore(indexT, qEntities)
 
-			// Turn-level scoring intentionally drops Semantic + Recency:
-			// (a) we don't embed turns, (b) a tiny recency boost on a
-			// short turn is noise. The remaining components are exactly
-			// the signals where turn granularity beats session
-			// granularity — lexical density, dates, preferences,
-			// rare entities.
-			total := weights.BM25*bm +
+			// Per-turn semantic score. Only counts when the index has
+			// been populated with turn embeddings (PixelogConfig
+			// .EmbedTurns + a non-trivial embedder). Cosine similarity
+			// against the query embedding catches paraphrase matches
+			// the lexical signals miss — the dominant remaining
+			// failure mode on LoCoMo single-hop direct lookups.
+			sem := 0.0
+			if len(queryEmb) > 0 && len(tr.Embedding) > 0 {
+				sem = cosineF32(queryEmb, tr.Embedding)
+			}
+
+			// Fact-graph boost: if this turn is the source of a fact
+			// whose subject is referenced in the question, scale
+			// FactBoost by the fact's confidence. This is the
+			// retrieval arm of Pixelog's micro-graph — the turn
+			// that *established* a known fact about the question's
+			// subject is almost always in the answerer's sweet spot,
+			// with higher-precision extractions pulling harder than
+			// hedged heuristic matches.
+			fact := factTurnConf[tr.ID]
+
+			// Recency on tiny short turns is noise; we exclude it
+			// here. All other signals match the session-level scorer
+			// so weights tune consistently across granularities.
+			total := weights.Semantic*sem +
+				weights.BM25*bm +
 				weights.Temporal*temp +
 				weights.Preference*pref +
-				weights.Keyword*kw
+				weights.Keyword*kw +
+				weights.FactBoost*fact
 			if total <= 0 {
 				continue
 			}
@@ -567,7 +731,7 @@ func (m *PixelogMemory) Retrieve(ctx context.Context, namespace string, query st
 
 	idx := cached
 	if idx == nil || indexed != turnCount {
-		idx = buildSessionIndex(turns)
+		idx = buildSessionIndexWith(turns, m.factExtractor)
 		for i := range idx.sessions {
 			if len(idx.sessions[i].Text) == 0 {
 				continue
@@ -577,6 +741,14 @@ func (m *PixelogMemory) Retrieve(ctx context.Context, namespace string, query st
 				return nil, fmt.Errorf("embed session %s: %w", idx.sessions[i].ID, err)
 			}
 			idx.sessions[i].embedding = emb
+		}
+		// Per-turn embeddings: bounded-concurrency embed every turn so
+		// scoreTurnsGlobal can use cosine similarity at turn
+		// granularity. Errors degrade individual turns to lexical-only
+		// rather than failing the whole retrieve. See
+		// embedTurnsConcurrent for the rationale.
+		if m.embedTurns {
+			_ = embedTurnsConcurrent(ctx, m.embedder, idx)
 		}
 		m.mu.Lock()
 		s.retrieverIndex = idx
@@ -591,7 +763,10 @@ func (m *PixelogMemory) Retrieve(ctx context.Context, namespace string, query st
 
 	weights := DefaultHybridWeights()
 	ranked := idx.scoreSessions(query, queryEmb, weights)
-	rankedTurns := idx.scoreTurnsGlobal(query, weights, k*4)
+	// queryEmb is forwarded so the turn ranker can score per-turn
+	// semantic similarity against the cached turn embeddings populated
+	// by embedTurnsConcurrent above.
+	rankedTurns := idx.scoreTurnsGlobal(query, queryEmb, weights, k*4)
 
 	if k <= 0 {
 		k = 10
@@ -659,6 +834,91 @@ func (m *PixelogMemory) Retrieve(ctx context.Context, namespace string, query st
 // Other providers (Cohere, OpenAI) accept far more, but truncating
 // keeps cross-provider behaviour stable and predictable.
 const embedMaxChars = 4500
+
+// embedTurnConcurrency caps the number of concurrent turn-embed RPCs
+// in flight against any one provider. 8 is empirically a good sweet
+// spot for OpenAI (well below their 3000 RPM token-embedding tier),
+// Ollama (avoids GPU oversubscription on a single workstation), and
+// the in-process hash embedder (negligible overhead either way).
+const embedTurnConcurrency = 8
+
+// embedTurnsConcurrent walks every turn in the index, embeds those
+// that don't already carry an Embedding (so re-runs on a cached
+// sessionIndex are no-ops), and writes the result back in-place.
+// Concurrency is bounded by embedTurnConcurrency so a single 2k-turn
+// LoCoMo conversation never opens more than 8 sockets to the
+// embedding provider.
+//
+// On any error from the embedder the turn's Embedding is left nil
+// (rather than failing the whole retrieve). This is the right choice
+// for production: a transient 429 / 5xx on one of 1986 turns must not
+// block the question that triggered the embed pass — the turn
+// gracefully degrades to lexical-only scoring on its next visit.
+//
+// The function returns the first non-nil error so callers running in
+// strict-mode benchmarks can still surface infra failures; benchmark
+// runners typically log-and-continue.
+func embedTurnsConcurrent(ctx context.Context, embedder interface {
+	GenerateEmbedding(context.Context, string) ([]float32, error)
+}, idx *sessionIndex) error {
+	if embedder == nil || idx == nil {
+		return nil
+	}
+	sem := make(chan struct{}, embedTurnConcurrency)
+	type job struct {
+		si, ti int
+	}
+	var jobs []job
+	for si := range idx.sessions {
+		for ti := range idx.sessions[si].Turns {
+			tr := idx.sessions[si].Turns[ti]
+			if tr.Text == "" || tr.ID == "" || len(tr.Embedding) > 0 {
+				continue
+			}
+			jobs = append(jobs, job{si, ti})
+		}
+	}
+	if len(jobs) == 0 {
+		return nil
+	}
+
+	type result struct {
+		si, ti int
+		emb    []float32
+		err    error
+	}
+	results := make(chan result, len(jobs))
+	for _, j := range jobs {
+		sem <- struct{}{}
+		go func(j job) {
+			defer func() { <-sem }()
+			tr := idx.sessions[j.si].Turns[j.ti]
+			// Embed the augmented IndexText so the coref hints
+			// (resolved names) flow into the per-turn vector. This
+			// is what lets the embedder match a pronoun-only turn
+			// like "I'm currently single" to a question that
+			// references "Caroline" by name.
+			src := tr.IndexText
+			if src == "" {
+				src = tr.Text
+			}
+			emb, err := embedder.GenerateEmbedding(ctx, truncateForEmbedding(src))
+			results <- result{j.si, j.ti, emb, err}
+		}(j)
+	}
+	var firstErr error
+	for i := 0; i < len(jobs); i++ {
+		r := <-results
+		if r.err != nil {
+			if firstErr == nil {
+				firstErr = fmt.Errorf("embed turn %s: %w", idx.sessions[r.si].Turns[r.ti].ID, r.err)
+			}
+			continue
+		}
+		idx.sessions[r.si].Turns[r.ti].Embedding = r.emb
+	}
+	return firstErr
+}
 
 // truncateForEmbedding shrinks text to embedMaxChars while preserving
 // the full text untouched when it already fits. We bias toward the

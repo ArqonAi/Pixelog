@@ -183,8 +183,55 @@ func (c *MultiClient) Chat(prompt string) (string, error) {
 	return c.ChatCtx(context.Background(), prompt)
 }
 
-// ChatCtx is Chat with an explicit context.
+// ChatCtx is Chat with an explicit context. Wraps the per-dialect
+// transport with bounded exponential-backoff retry on transient
+// upstream failures (429 rate limit, 5xx overload, network errors).
+//
+// Retry policy is intentionally conservative — no retries on 4xx
+// other than 429 (those are deterministic auth/billing/format
+// errors that won't resolve), and capped attempts so a permanently
+// degraded provider doesn't hang a benchmark for hours.
 func (c *MultiClient) ChatCtx(ctx context.Context, prompt string) (string, error) {
+	const maxAttempts = 5
+	// Base backoff 2s; doubled per attempt: 2, 4, 8, 16. Total
+	// worst-case wait ≈30s before the final attempt. Production
+	// rate-limit windows on Anthropic / OpenAI are typically 10-60s,
+	// so this fits the recovery window without hanging callers.
+	backoff := 2 * time.Second
+
+	var lastErr error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
+		out, err := c.chatOnce(ctx, prompt)
+		if err == nil {
+			return out, nil
+		}
+		lastErr = err
+		if !isTransientLLMError(err) {
+			return "", err
+		}
+		// Exponential backoff with jitter-free deterministic
+		// schedule. Sleep is context-cancellable so a parent
+		// timeout still aborts promptly.
+		if attempt == maxAttempts-1 {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(backoff):
+		}
+		backoff *= 2
+	}
+	return "", fmt.Errorf("llm: exhausted retries: %w", lastErr)
+}
+
+// chatOnce dispatches a single request without retry. Extracted so
+// ChatCtx can wrap it in a retry loop without duplicating the
+// dialect switch.
+func (c *MultiClient) chatOnce(ctx context.Context, prompt string) (string, error) {
 	switch c.spec.dialect {
 	case "openai":
 		return c.chatOpenAILike(ctx, prompt)
@@ -197,6 +244,39 @@ func (c *MultiClient) ChatCtx(ctx context.Context, prompt string) (string, error
 	default:
 		return "", fmt.Errorf("unsupported dialect: %q", c.spec.dialect)
 	}
+}
+
+// isTransientLLMError classifies an upstream error as worth
+// retrying. Matches the status-code substrings emitted by every
+// dialect's error path:
+//   - 429: rate limit (any provider)
+//   - 5xx: server-side overload (Anthropic emits 529 specifically
+//     for "Overloaded"; OpenAI / others emit 500/502/503)
+//
+// Network-level errors (connection reset, EOF, i/o timeout) also
+// match. Auth errors (401/403), billing (402), and bad-request
+// (400) are NOT retried because they're deterministic.
+func isTransientLLMError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, " 429"),
+		strings.Contains(msg, " 500"),
+		strings.Contains(msg, " 502"),
+		strings.Contains(msg, " 503"),
+		strings.Contains(msg, " 529"),
+		strings.Contains(msg, "overloaded"),
+		strings.Contains(msg, "Overloaded"),
+		strings.Contains(msg, "rate_limit"),
+		strings.Contains(msg, "rate limit"),
+		strings.Contains(msg, "connection reset"),
+		strings.Contains(msg, "EOF"),
+		strings.Contains(msg, "i/o timeout"):
+		return true
+	}
+	return false
 }
 
 func (c *MultiClient) chatOpenAILike(ctx context.Context, prompt string) (string, error) {
@@ -344,12 +424,21 @@ func (c *MultiClient) chatGemini(ctx context.Context, prompt string) (string, er
 }
 
 func (c *MultiClient) chatOllama(ctx context.Context, prompt string) (string, error) {
+	// think:false disables the reasoning trace on R1-class models
+	// (deepseek-r1, qwq, etc.) so the response lands in
+	// message.content instead of being trapped in message.thinking.
+	// num_predict:4096 gives long-form answers room to fit; the
+	// Ollama default (~128) truncates LoCoMo answers mid-sentence.
 	body := map[string]interface{}{
 		"model": c.model,
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},
 		"stream": false,
+		"think":  false,
+		"options": map[string]interface{}{
+			"num_predict": 4096,
+		},
 	}
 	payload, _ := json.Marshal(body)
 	req, err := http.NewRequestWithContext(ctx, "POST", c.spec.endpoint, bytes.NewReader(payload))
@@ -368,11 +457,18 @@ func (c *MultiClient) chatOllama(ctx context.Context, prompt string) (string, er
 	}
 	var out struct {
 		Message struct {
-			Content string `json:"content"`
+			Content  string `json:"content"`
+			Thinking string `json:"thinking"`
 		} `json:"message"`
 	}
 	if err := json.Unmarshal(bodyBytes, &out); err != nil {
 		return "", fmt.Errorf("ollama parse: %w", err)
+	}
+	// Belt-and-braces: if a model still emits its answer in the
+	// thinking field (older Ollama versions ignore think:false),
+	// fall back to that so the bench doesn't see an empty string.
+	if out.Message.Content == "" && out.Message.Thinking != "" {
+		return out.Message.Thinking, nil
 	}
 	return out.Message.Content, nil
 }

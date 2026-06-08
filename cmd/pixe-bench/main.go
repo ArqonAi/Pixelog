@@ -32,9 +32,11 @@ func main() {
 	categories := flag.String("categories", "", "comma-separated category filter (ConvoMem)")
 	embedderName := flag.String("embedder", "hash", "embedder: hash | openai | ollama")
 	openaiKey := flag.String("openai-key", os.Getenv("OPENAI_API_KEY"), "OpenAI API key")
+	openaiEmbedModel := flag.String("openai-embed-model", "text-embedding-3-small", "OpenAI embedding model: text-embedding-3-small | text-embedding-3-large")
 	ollamaURL := flag.String("ollama-url", "http://localhost:11434", "Ollama base URL")
 	ollamaModel := flag.String("ollama-model", "nomic-embed-text", "Ollama embedding model")
-	judgeName := flag.String("judge", "exact", "judge: exact | llm")
+	judgeName := flag.String("judge", "exact", "judge: exact | llm | mem0 (mem0 = verbatim arXiv:2504.19413 binary CORRECT/WRONG prompt)")
+	mem0Prompts := flag.Bool("mem0-prompts", false, "use the verbatim Mem0 ANSWER_PROMPT (arXiv:2504.19413) for the answerer; pairs with --judge=mem0 for full parity")
 	provider := flag.String("provider", "openrouter", "chat provider: openai | openrouter | anthropic | gemini | groq | xai | nvidia | moonshot | deepseek | zai | local | ollama")
 	llmModel := flag.String("llm-model", "", "model id (defaults per provider)")
 	llmKey := flag.String("llm-key", "", "API key (defaults to provider's env var)")
@@ -48,6 +50,14 @@ func main() {
 	reflectModel := flag.String("reflect-model", "", "model for the reflector (defaults to --llm-model)")
 	timeout := flag.Duration("qa-timeout", 90*time.Second, "per-QA timeout")
 	recallK := flag.Int("recall-k", 0, "retrieval-recall mode: top-k to evaluate (sets mode=recall when > 0; 5 and 10 are the conventional values)")
+	retrievalK := flag.Int("retrieval-k", 30, "QA-mode: top-k turns fed to the answerer as context (Mem0 paper default: 30)")
+	llmFacts := flag.Bool("llm-facts", false, "ingest-time LLM fact extraction: runs the answerer's provider/model over every turn to produce a high-recall fact micro-graph (in addition to the rule-based one). Adds per-turn API cost; use only when measuring cat-3 / counterfactual lift.")
+	llmFactsModel := flag.String("llm-facts-model", "", "override model id for fact extraction (defaults to --llm-model). Use a cheap fast model — fact extraction is volume-heavy.")
+	factEvidence := flag.Bool("fact-evidence", false, "surface matched fact triples as a structured KNOWN FACTS preamble in the answerer context (mirrors atomic-fact distillation à la Mem0). Closes the answerer-extraction gap on direct-lookup and counterfactual-inference questions.")
+	entityProfiles := flag.Bool("entity-profiles", false, "Lever-2 symbolic recursion: surface a per-entity time-anchored chronology (KNOWN TIMELINES) as a preamble for questions whose subject has a profile. Converts temporal-diff and counterfactual reasoning from multi-hop turn-walking into a direct lookup over a dated projection.")
+	decompose := flag.Bool("decompose", false, "recursive question decomposition: ask the LLM to split compositional/temporal/multi-hop questions into atomic sub-questions, retrieve evidence for each, and merge before the final answer.")
+	decomposeProvider := flag.String("decompose-provider", "", "provider for the decomposer (defaults to --provider)")
+	decomposeModel := flag.String("decompose-model", "", "model id for the decomposer (defaults to --llm-model)")
 	flag.Parse()
 
 	// --recall-k implies mode=recall.
@@ -69,7 +79,7 @@ func main() {
 		fatal("load dataset: %v", err)
 	}
 
-	emb, err := buildEmbedder(*embedderName, *openaiKey, *ollamaURL, *ollamaModel)
+	emb, err := buildEmbedder(*embedderName, *openaiKey, *openaiEmbedModel, *ollamaURL, *ollamaModel)
 	if err != nil {
 		fatal("embedder: %v", err)
 	}
@@ -87,18 +97,23 @@ func main() {
 		*judgeName = "exact"
 	}
 
-	if *answerer || *judgeName == "llm" {
+	useLLMJudge := *judgeName == "llm" || *judgeName == "mem0"
+	if *answerer || useLLMJudge {
 		client, err := llm.NewMultiClient(llm.Provider(*provider), *llmModel, *llmKey)
 		if err != nil {
 			fatal("answerer client: %v", err)
 		}
-		fmt.Fprintf(os.Stderr, "[pixe-bench] answerer: provider=%s model=%s\n", client.Provider(), client.Model())
+		fmt.Fprintf(os.Stderr, "[pixe-bench] answerer: provider=%s model=%s mem0-prompts=%v\n", client.Provider(), client.Model(), *mem0Prompts)
 
 		if *answerer {
-			ans = &chatAnswerer{client: client, fullContext: *fullContext, cot: *cot}
+			if *mem0Prompts {
+				ans = &mem0Answerer{client: client, fullContext: *fullContext}
+			} else {
+				ans = &chatAnswerer{client: client, fullContext: *fullContext, cot: *cot}
+			}
 		}
 
-		if *judgeName == "llm" {
+		if useLLMJudge {
 			jp := *judgeProvider
 			if jp == "" {
 				jp = *provider
@@ -111,8 +126,12 @@ func main() {
 			if err != nil {
 				fatal("judge client: %v", err)
 			}
-			fmt.Fprintf(os.Stderr, "[pixe-bench] judge:    provider=%s model=%s\n", jc.Provider(), jc.Model())
-			judge = bench.NewLLMJudge(jc)
+			fmt.Fprintf(os.Stderr, "[pixe-bench] judge:    provider=%s model=%s kind=%s\n", jc.Provider(), jc.Model(), *judgeName)
+			if *judgeName == "mem0" {
+				judge = bench.NewMem0Judge(jc)
+			} else {
+				judge = bench.NewLLMJudge(jc)
+			}
 		}
 	}
 
@@ -134,11 +153,58 @@ func main() {
 		reflector = &chatReflector{client: rc}
 	}
 
+	// Optional LLM fact extractor. Built behind --llm-facts so the
+	// default path stays zero-API-cost. We share the answerer's
+	// provider/key by default but allow a separate model override
+	// via --llm-facts-model — fact extraction is volume-heavy and
+	// usually wants a cheap fast model (gpt-4o-mini, sonnet-haiku).
+	var factExtractor bench.FactExtractor
+	if *llmFacts {
+		fm := *llmFactsModel
+		if fm == "" {
+			fm = *llmModel
+		}
+		fc, ferr := llm.NewMultiClient(llm.Provider(*provider), fm, *llmKey)
+		if ferr != nil {
+			fatal("llm-facts client: %v", ferr)
+		}
+		fmt.Fprintf(os.Stderr, "[pixe-bench] llm-facts: provider=%s model=%s\n", fc.Provider(), fc.Model())
+		factExtractor = bench.NewLLMFactExtractor(&multiClientFactCompletion{client: fc})
+	}
+
+	// Optional recursive question decomposer. Runs at QA time, not
+	// ingest time — one short LLM call per question to split
+	// compositional/temporal asks into atomic sub-questions. Each
+	// sub-question gets its own retrieval pass; the union of evidence
+	// is merged into the answerer context.
+	var decomposer bench.QuestionDecomposer
+	if *decompose {
+		dp := *decomposeProvider
+		if dp == "" {
+			dp = *provider
+		}
+		dm := *decomposeModel
+		if dm == "" {
+			dm = *llmModel
+		}
+		dc, err := llm.NewMultiClient(llm.Provider(dp), dm, "")
+		if err != nil {
+			fatal("decomposer client: %v", err)
+		}
+		fmt.Fprintf(os.Stderr, "[pixe-bench] decomposer: provider=%s model=%s\n", dc.Provider(), dc.Model())
+		decomposer = &chatDecomposer{client: dc}
+	}
+
 	mem := bench.NewPixelogMemory(bench.PixelogConfig{
-		Embedder:    emb,
-		Answerer:    ans,
-		FullContext: *fullContext,
-		Reflector:   reflector,
+		Embedder:      emb,
+		Answerer:      ans,
+		FullContext:   *fullContext,
+		Reflector:     reflector,
+		RetrievalK:    *retrievalK,
+		FactExtractor:   factExtractor,
+		FactEvidence:    *factEvidence,
+		ProfilePreamble: *entityProfiles,
+		Decomposer:      decomposer,
 	})
 
 	cases, err := ds.Cases(ctx)
@@ -228,6 +294,35 @@ func totalQA(cases []bench.Case) int {
 	return n
 }
 
+// multiClientFactCompletion adapts a llm.MultiClient (which exposes
+// only a single-prompt ChatCtx call) to bench.FactCompletion (which
+// takes separate system + user messages). The adapter prepends the
+// system prompt to the user prompt with a clear delimiter, since the
+// underlying providers' chat APIs reached via MultiClient.ChatCtx
+// don't currently expose a typed system role.
+//
+// Concatenation is safe here because the system prompt is fixed-text
+// instruction (see facts_llm.go llmFactSystemPrompt) and the user
+// payload is wrapped in <<< / >>> delimiters that the system message
+// instructs the model to treat as data — so prompt-injection from
+// turn text can't escape into instruction territory.
+type multiClientFactCompletion struct {
+	client *llm.MultiClient
+}
+
+// Complete implements bench.FactCompletion. The system + user message
+// are folded into a single prompt with a SYSTEM: prefix; production
+// providers tolerate this format identically to a typed-role payload
+// for the JSON-emission task we're driving here.
+func (a *multiClientFactCompletion) Complete(ctx context.Context, system, user string) (string, error) {
+	var sb strings.Builder
+	sb.WriteString("SYSTEM:\n")
+	sb.WriteString(system)
+	sb.WriteString("\n\nUSER:\n")
+	sb.WriteString(user)
+	return a.client.ChatCtx(ctx, sb.String())
+}
+
 type chatAnswerer struct {
 	client      *llm.MultiClient
 	fullContext bool
@@ -298,6 +393,78 @@ func (a *chatAnswerer) Answer(ctx context.Context, q string, retrieved []string)
 	return strings.TrimSpace(raw), nil
 }
 
+// mem0Answerer ports the verbatim ANSWER_PROMPT from
+// mem0/evaluation/prompts.py (arXiv:2504.19413, MIT-licensed) — the
+// "Zep" single-block memories variant, which matches our flat
+// retrieved-context shape (turns are already prefixed
+// "[YYYY-MM-DD] speaker: text" by the hybrid retriever).
+//
+// Using the published prompt verbatim means head-to-head LoCoMo
+// numbers can't be disputed on prompt grounds.
+type mem0Answerer struct {
+	client      *llm.MultiClient
+	fullContext bool
+}
+
+func (a *mem0Answerer) Answer(ctx context.Context, q string, retrieved []string) (string, error) {
+	var memories strings.Builder
+	if len(retrieved) == 0 {
+		memories.WriteString("(no memories retrieved)")
+	} else {
+		for _, r := range retrieved {
+			memories.WriteString(r)
+			memories.WriteString("\n")
+		}
+	}
+
+	// Verbatim port of ANSWER_PROMPT_ZEP from
+	// github.com/mem0ai/mem0/blob/main/evaluation/prompts.py
+	prompt := `
+    You are an intelligent memory assistant tasked with retrieving accurate information from conversation memories.
+
+    # CONTEXT:
+    You have access to memories from a conversation. These memories contain
+    timestamped information that may be relevant to answering the question.
+
+    # INSTRUCTIONS:
+    1. Carefully analyze all provided memories
+    2. Pay special attention to the timestamps to determine the answer
+    3. If the question asks about a specific event or fact, look for direct evidence in the memories
+    4. If the memories contain contradictory information, prioritize the most recent memory
+    5. If there is a question about time references (like "last year", "two months ago", etc.), 
+       calculate the actual date based on the memory timestamp. For example, if a memory from 
+       4 May 2022 mentions "went to India last year," then the trip occurred in 2021.
+    6. Always convert relative time references to specific dates, months, or years. For example, 
+       convert "last year" to "2022" or "two months ago" to "March 2023" based on the memory 
+       timestamp. Ignore the reference while answering the question.
+    7. Focus only on the content of the memories. Do not confuse character 
+       names mentioned in memories with the actual users who created those memories.
+    8. The answer should be less than 5-6 words.
+
+    # APPROACH (Think step by step):
+    1. First, examine all memories that contain information related to the question
+    2. Examine the timestamps and content of these memories carefully
+    3. Look for explicit mentions of dates, times, locations, or events that answer the question
+    4. If the answer requires calculation (e.g., converting relative time references), show your work
+    5. Formulate a precise, concise answer based solely on the evidence in the memories
+    6. Double-check that your answer directly addresses the question asked
+    7. Ensure your final answer is specific and avoids vague time references
+
+    Memories:
+
+` + memories.String() + `
+
+    Question: ` + q + `
+    Answer:
+    `
+
+	raw, err := a.client.ChatCtx(ctx, prompt)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(raw), nil
+}
+
 // chatReflector implements bench.SessionReflector by asking an LLM to
 // produce a dense, structured recap of one conversational session.
 // Output format is a series of ENTITY/EVENT/FACT lines optimised for
@@ -353,7 +520,86 @@ OUTPUT (lines only, no preamble):`, sessionID, dateStr, transcript.String(), dat
 	return r.client.ChatCtx(ctx, prompt)
 }
 
-func buildEmbedder(name, openaiKey, ollamaURL, ollamaModel string) (interface {
+// chatDecomposer implements bench.QuestionDecomposer by asking an LLM
+// to split a compositional / temporal / multi-hop question into a
+// short list of atomic sub-questions. Each sub-question must be
+// independently answerable from the conversation history. Output is
+// one sub-question per line; an empty / single-line output signals
+// the question is already atomic and no decomposition is needed.
+type chatDecomposer struct {
+	client *llm.MultiClient
+}
+
+func (d *chatDecomposer) Decompose(ctx context.Context, question string) ([]string, error) {
+	q := strings.TrimSpace(question)
+	if q == "" {
+		return nil, nil
+	}
+
+	prompt := fmt.Sprintf(`You are a query planner for a long-conversation memory system.
+
+QUESTION:
+%s
+
+Decide whether this question requires looking up multiple independent facts (compositional, temporal-comparison, multi-hop, counterfactual). If so, break it into 2–4 ATOMIC sub-questions that can each be answered from a single piece of evidence in the conversation. If the question is already atomic, output exactly the single line: ATOMIC
+
+Rules:
+- Each sub-question must be self-contained (no pronouns, no "the previous one").
+- Preserve named entities and explicit time references verbatim.
+- Do NOT invent facts or constraints not in the original question.
+- For temporal-difference questions ("how long ago", "before/after"), produce one sub-question per anchor date/event.
+- For counterfactuals ("what would X have done if Y had not happened"), produce one sub-question for the actual event and one for the alternative.
+- Output sub-questions only — one per line, no numbering, no bullets, no commentary.
+
+OUTPUT:`, q)
+
+	raw, err := d.client.ChatCtx(ctx, prompt)
+	if err != nil {
+		return nil, err
+	}
+	raw = strings.TrimSpace(raw)
+	if raw == "" || strings.EqualFold(raw, "ATOMIC") {
+		return nil, nil
+	}
+
+	lines := strings.Split(raw, "\n")
+	subs := make([]string, 0, len(lines))
+	seen := make(map[string]struct{}, len(lines))
+	for _, ln := range lines {
+		s := strings.TrimSpace(ln)
+		// Strip common list prefixes the model may emit despite instructions.
+		s = strings.TrimLeft(s, "-*•\t ")
+		// "1. ", "1) ", "Q1: " etc.
+		for i, r := range s {
+			if r >= '0' && r <= '9' {
+				continue
+			}
+			if i > 0 && (r == '.' || r == ')' || r == ':') {
+				s = strings.TrimSpace(s[i+1:])
+			}
+			break
+		}
+		if s == "" || strings.EqualFold(s, "ATOMIC") {
+			continue
+		}
+		key := strings.ToLower(s)
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		subs = append(subs, s)
+		if len(subs) >= 4 {
+			break
+		}
+	}
+	// If the model only restated the original question, treat as atomic.
+	if len(subs) == 1 && strings.EqualFold(subs[0], q) {
+		return nil, nil
+	}
+	return subs, nil
+}
+
+func buildEmbedder(name, openaiKey, openaiModel, ollamaURL, ollamaModel string) (interface {
 	GenerateEmbedding(ctx context.Context, text string) ([]float32, error)
 }, error) {
 	switch strings.ToLower(name) {
@@ -363,7 +609,8 @@ func buildEmbedder(name, openaiKey, ollamaURL, ollamaModel string) (interface {
 		if openaiKey == "" {
 			return nil, fmt.Errorf("openai embedder requires --openai-key or OPENAI_API_KEY")
 		}
-		return providerEmbedder{p: search.NewOpenAIProvider(openaiKey)}, nil
+		fmt.Fprintf(os.Stderr, "[pixe-bench] embedder: openai model=%s\n", openaiModel)
+		return providerEmbedder{p: search.NewOpenAIProviderWithModel(openaiKey, openaiModel)}, nil
 	case "ollama":
 		return providerEmbedder{p: search.NewOllamaProvider(ollamaURL, ollamaModel)}, nil
 	default:

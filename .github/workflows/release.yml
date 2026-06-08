@@ -2,8 +2,11 @@ name: Build and Release Pixelog CLI
 
 on:
   push:
+    branches: [ "main" ]
     tags:
       - 'v*'
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   test:
@@ -83,25 +86,26 @@ jobs:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
+    
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
         path: dist
-
+        
     - name: Create checksums
       run: |
         cd dist
         find . -type f -exec sha256sum {} \; > SHA256SUMS.txt
-
+        
     - name: Create Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v1
       with:
         files: |
           dist/**/*

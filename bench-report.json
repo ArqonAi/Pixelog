@@ -1,0 +1,77 @@
+{
+  "suite": "locomo",
+  "mode": "recall",
+  "k": 5,
+  "started_at": "2026-04-28T15:20:17.125802-04:00",
+  "finished_at": "2026-04-28T15:20:21.800777-04:00",
+  "num_cases": 10,
+  "num_qa": 1986,
+  "aggregate": {
+    "count": 1986,
+    "judge_mean": 0,
+    "exact_match_rate": 0,
+    "f1_mean": 0,
+    "mean_latency_ms": 1.755287009063444,
+    "errors": 0,
+    "recall_at_k": 0.8755276711517948,
+    "hit_at_k": 0.9233097880928355,
+    "num_scored_recall": 1982
+  },
+  "by_category": {
+    "adversarial": {
+      "count": 446,
+      "judge_mean": 0,
+      "exact_match_rate": 0,
+      "f1_mean": 0,
+      "mean_latency_ms": 1.5807174887892377,
+      "errors": 0,
+      "recall_at_k": 0.9573991031390134,
+      "hit_at_k": 0.9573991031390134,
+      "num_scored_recall": 446
+    },
+    "multi_hop": {
+      "count": 321,
+      "judge_mean": 0,
+      "exact_match_rate": 0,
+      "f1_mean": 0,
+      "mean_latency_ms": 0.9283489096573209,
+      "errors": 0,
+      "recall_at_k": 0.8974558670820353,
+      "hit_at_k": 0.9127725856697819,
+      "num_scored_recall": 321
+    },
+    "open_domain": {
+      "count": 841,
+      "judge_mean": 0,
+      "exact_match_rate": 0,
+      "f1_mean": 0,
+      "mean_latency_ms": 1.8394768133174793,
+      "errors": 0,
+      "recall_at_k": 0.950852160126833,
+      "hit_at_k": 0.9512485136741974,
+      "num_scored_recall": 841
+    },
+    "single_hop": {
+      "count": 282,
+      "judge_mean": 0,
+      "exact_match_rate": 0,
+      "f1_mean": 0,
+      "mean_latency_ms": 1.4042553191489362,
+      "errors": 0,
+      "recall_at_k": 0.6053862695100096,
+      "hit_at_k": 0.8794326241134752,
+      "num_scored_recall": 282
+    },
+    "temporal": {
+      "count": 96,
+      "judge_mean": 0,
+      "exact_match_rate": 0,
+      "f1_mean": 0,
+      "mean_latency_ms": 5.625,
+      "errors": 0,
+      "recall_at_k": 0.5415969154460203,
+      "hit_at_k": 0.6739130434782609,
+      "num_scored_recall": 92
+    }
+  }
+}

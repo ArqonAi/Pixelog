@@ -10,69 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ArqonAi/Pixelog/pkg/config"
+	"github.com/ArqonAi/Pixelog/backend/pkg/config"
 )
 
 type EmbeddingProvider interface {
 	GenerateEmbedding(ctx context.Context, text string) ([]float32, error)
 	GetDimensions() int
 	GetProviderName() string
-}
-
-// retryableHTTPDo executes an HTTP request with exponential backoff
-// retry on transient failures (429 Too Many Requests, 5xx server
-// errors, network errors). Each attempt uses the SAME context so
-// callers control the overall deadline; per-attempt body is
-// re-buffered from the supplied factory because http.Request bodies
-// are consumed on Do.
-//
-// The backoff schedule is 500ms → 1s → 2s → 4s with ±20% jitter,
-// capped at maxAttempts=4 so a request can spend at most ~7.5s
-// retrying on top of the underlying client.Timeout. If the caller's
-// context expires earlier the retry loop exits immediately.
-//
-// Returns the final response (caller closes body) or the last error.
-// 4xx other than 429 are NOT retried — they're caller errors that
-// will fail identically on retry.
-func retryableHTTPDo(ctx context.Context, client *http.Client, mkRequest func() (*http.Request, error)) (*http.Response, error) {
-	const maxAttempts = 4
-	var lastErr error
-	for attempt := 0; attempt < maxAttempts; attempt++ {
-		if attempt > 0 {
-			// Backoff with deterministic-but-spread base of 500ms*2^(n-1).
-			// Randomness omitted for test reproducibility — ample
-			// per-call timeout variance already provides spread under
-			// real load.
-			delay := time.Duration(500*(1<<(attempt-1))) * time.Millisecond
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case <-time.After(delay):
-			}
-		}
-		req, err := mkRequest()
-		if err != nil {
-			return nil, err
-		}
-		resp, err := client.Do(req)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		// Retry on 429 + 5xx; surface everything else (including 2xx)
-		// to the caller immediately.
-		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
-			body, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			lastErr = fmt.Errorf("status %d: %s", resp.StatusCode, string(body))
-			continue
-		}
-		return resp, nil
-	}
-	if lastErr == nil {
-		lastErr = fmt.Errorf("all %d attempts failed", maxAttempts)
-	}
-	return nil, lastErr
 }
 
 // OpenAI Provider
@@ -101,22 +45,6 @@ func NewOpenAIProvider(apiKey string) *OpenAIProvider {
 	}
 }
 
-// NewOpenAIProviderWithModel constructs a provider pinned to a
-// specific embedding model. Used by pixe-bench to switch between
-// text-embedding-3-small (1536-dim, $0.02/1M) and text-embedding-3-large
-// (3072-dim, $0.13/1M) for benchmark parity with vendor numbers
-// reported under the larger model.
-func NewOpenAIProviderWithModel(apiKey, model string) *OpenAIProvider {
-	if strings.TrimSpace(model) == "" {
-		model = "text-embedding-3-small"
-	}
-	return &OpenAIProvider{
-		apiKey: apiKey,
-		model:  model,
-		client: &http.Client{Timeout: 30 * time.Second},
-	}
-}
-
 func (p *OpenAIProvider) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
 	if len(text) > 8000 {
 		text = text[:8000]
@@ -128,22 +56,17 @@ func (p *OpenAIProvider) GenerateEmbedding(ctx context.Context, text string) ([]
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// Wrap the request build in a closure so the retry loop can
-	// re-buffer the body for each attempt — http.Request.Body is a
-	// io.Reader consumed on Do() and isn't safe to reuse.
-	mkReq := func() (*http.Request, error) {
-		req, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/embeddings", bytes.NewBuffer(jsonData))
-		if err != nil {
-			return nil, fmt.Errorf("failed to create request: %w", err)
-		}
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+p.apiKey)
-		return req, nil
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/embeddings", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	resp, err := retryableHTTPDo(ctx, p.client, mkReq)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+p.apiKey)
+
+	resp, err := p.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("openai embedding: %w", err)
+		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
 	defer resp.Body.Close()
 

@@ -4,6 +4,7 @@
 
 # Pixelog
 
+[![Tests](https://github.com/ArqonAi/Pixelog/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/ArqonAi/Pixelog/actions/workflows/test.yml)
 [![Release](https://github.com/ArqonAi/Pixelog/actions/workflows/release.yml/badge.svg)](https://github.com/ArqonAi/Pixelog/actions/workflows/release.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ArqonAi/Pixelog)](https://goreportcard.com/report/github.com/ArqonAi/Pixelog)
 [![Go Reference](https://pkg.go.dev/badge/github.com/ArqonAi/Pixelog.svg)](https://pkg.go.dev/github.com/ArqonAi/Pixelog)
@@ -418,13 +419,19 @@ top-k candidates.
 | LongMemEval S (500 QA) | Hit@5  | **97.20%** | 115k-token haystacks, hash embedder, no LLM |
 | LongMemEval S (500 QA) | Hit@10 | **98.20%** | same config |
 | LongMemEval Oracle (500 QA) | Hit@5 | **100.00%** | oracle haystack |
-| LoCoMo (1,986 QA) | Hit@10 | **96.62%** | 10 conversations, hash embedder, no LLM |
-| LoCoMo (1,986 QA) | Hit@5  | **92.08%** | same config |
+| LoCoMo (1,986 QA) | Hit@10 | **98.54%** | 10 conversations, V2.1 + `text-embedding-3-large` |
+| LoCoMo (1,986 QA) | Hit@5  | **94.55%** | same config |
+| LoCoMo (1,986 QA, zero-LLM) | Hit@10 | **96.67%** | V2.1 + hash embedder, no API calls |
+| LoCoMo (1,986 QA, zero-LLM) | Hit@5  | **92.33%** | same config |
 | ConvoMem (top-bucket × 6 cats, 265 cases) | Hit@5 | **100.00%** | hardest bucket per category, hash embedder |
 | MemBench ACL 2025 (6,779 QA) | Hit@5 | **98.45%** | all FirstAgent + ThirdAgent splits, hash embedder |
 
-**Every Pixelog row uses the deterministic hash embedder — no API key,
-no cloud, no LLM at any stage.** The retriever lives in
+The `(zero-LLM)` rows use the **deterministic hash embedder — no API
+key, no cloud, no LLM at any stage**. The flagship LoCoMo rows
+(98.54% / 94.55%) swap in OpenAI's `text-embedding-3-large` for the
+semantic component (a single embedding RPC per turn / session / query;
+no chat-completion calls anywhere) and otherwise share the same V2.1
+hybrid retriever. The retriever lives in
 [`internal/bench/hybrid_retriever.go`](internal/bench/hybrid_retriever.go)
 and combines semantic cosine, BM25, temporal proximity,
 preference-pattern boosts, capitalised-entity overlap, and a small
@@ -463,16 +470,35 @@ go build -o pixe-bench ./cmd/pixe-bench
     --dataset /tmp/pixe-bench/datasets/longmemeval_s.json
 ```
 
-### Latest QA results (LoCoMo, 30 QA pilot, conversation 0)
+### End-to-end QA accuracy (LoCoMo, full 1,986 QA, three configurations)
 
-QA-accuracy mode — judge: `openai/gpt-4o`, answerer: `anthropic/claude-sonnet-4.6` via OpenRouter. Embedder: `nomic-embed-text` (Ollama).
+**End-to-end judged QA accuracy** — verbatim Mem0 evaluation prompt
+([arXiv:2504.19413](https://arxiv.org/abs/2504.19413)) and verbatim
+binary CORRECT/WRONG judge. Per-question outputs and reproduction
+commands are in
+[`benchmarks/BENCHMARKS.md`](benchmarks/BENCHMARKS.md#end-to-end-qa-accuracy--locomo-three-configurations-1986-qa-each).
 
-| Run                         | judge_mean | single_hop | multi_hop | temporal | latency  |
-| --------------------------- | ---------- | ---------- | --------- | -------- | -------- |
-| `--full-context --cot`      | **62.70%** | 82.00%     | 46.30%    | 80.00%   | 6.6 s/qa |
-| `--full-context --reflect --cot` | 60.00% | 78.00%     | 45.00%    | 75.00%   | 5.7 s/qa |
+| Category    | **Pixelog R1**¹ | Mem0 paper² | **Pixelog R2**³ | **Pixelog R3**⁴ |
+| ----------- | --------------: | ----------: | --------------: | --------------: |
+| single_hop  |          53.19% |      67.13% |          61.35% |          60.14% |
+| multi_hop   |          66.36% |      51.15% |      **72.59%** |      **75.70%** |
+| temporal    |          43.75% |      55.51% |          52.08% |          50.00% |
+| open_domain |      **76.10%** |      72.93% |      **79.67%** |          79.31% |
+| **Overall (1-4)** |    59.85% |  **61.68%** |      **66.42%** |          66.29% |
+| Hit@K       |          77.60% |           — |          84.26% |          84.50% |
 
-This is end-to-end QA accuracy (judged), not retrieval recall — different metric.
+¹ R1: gpt-4o-mini answerer, hash embedder, k=30 (Mem0 parity).
+² Mem0 paper Table 2.
+³ R2: gpt-4o answerer, hash embedder, k=60.
+⁴ R3: gpt-4o answerer, `text-embedding-3-large` embedder, k=60.
+
+**Key findings.** At Mem0's exact published config (R1), Pixelog
+matches the Mem0 paper baseline within 1.8pp and **beats Mem0 by
++15.2pp on multi-hop and +3.2pp on open-domain**. Upgrading from the
+`hash` embedder to `text-embedding-3-large` (R2 → R3) moved Hit@K only
++0.24pp — our hybrid retriever's lexical signals (BM25, IDF
+entity overlap, temporal proximity) already saturate retrieval at the
+level a 3072-dim OpenAI embedding can reach.
 
 ---
 

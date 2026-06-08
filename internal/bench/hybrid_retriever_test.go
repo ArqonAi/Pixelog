@@ -2,6 +2,7 @@ package bench
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 )
@@ -217,6 +218,149 @@ func TestPreferenceRE_InferentialCues(t *testing.T) {
 			t.Errorf("preferenceRE false-positive on: %q", q)
 		}
 	}
+}
+
+// fakeConceptEmbedder maps each input string to a fixed unit vector
+// based on a per-keyword "concept" lookup. Inputs that share a concept
+// (e.g. both contain "single" OR both contain "relationship") return
+// the same vector regardless of their other tokens — so cosine
+// similarity is 1.0 across paraphrases that the lexical (BM25/entity)
+// ranker would not link. Inputs containing neither keyword get a
+// default zero-overlap vector. This is the smallest-possible model
+// that demonstrates per-turn semantic recall.
+type fakeConceptEmbedder struct{}
+
+func (fakeConceptEmbedder) GenerateEmbedding(_ context.Context, text string) ([]float32, error) {
+	// 4-dim concept space: [relationship, food, activity, default]
+	v := make([]float32, 4)
+	lower := strings.ToLower(text)
+	switch {
+	case strings.Contains(lower, "single") || strings.Contains(lower, "relationship") || strings.Contains(lower, "dating"):
+		v[0] = 1
+	case strings.Contains(lower, "sushi") || strings.Contains(lower, "ramen") || strings.Contains(lower, "food"):
+		v[1] = 1
+	case strings.Contains(lower, "hiking") || strings.Contains(lower, "mountains") || strings.Contains(lower, "trail"):
+		v[2] = 1
+	default:
+		v[3] = 1
+	}
+	return v, nil
+}
+
+// TestTurnEmbeddings_ParaphraseRecall proves that per-turn semantic
+// scoring lets the retriever surface a paraphrase-only match (no
+// shared tokens with the query) above a token-overlapping but
+// semantically wrong distractor. This is exactly the failure mode
+// behind the LoCoMo single-hop "Caroline's relationship status?" ->
+// "I'm currently single" gold pair where the lexical signals miss.
+//
+// Without turn embeddings, the distractor turn (which shares a token
+// with the query) wins on BM25/entity; with turn embeddings, the
+// concept-matching turn ranks first.
+func TestTurnEmbeddings_ParaphraseRecall(t *testing.T) {
+	ctx := context.Background()
+	ts := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	// Distractor: shares the rare entity "Caroline" with the query
+	// but talks about food, not relationship status.
+	// Gold: contains "single" — the answer concept — but no shared
+	// token with the question other than common stopwords.
+	turns := []Turn{
+		{SessionID: "s1", TurnID: "s1:0", Speaker: "Caroline", Text: "I love Caroline's sushi place.", Timestamp: ts},
+		{SessionID: "s1", TurnID: "s1:1", Speaker: "Caroline", Text: "I'm currently single after the breakup.", Timestamp: ts},
+	}
+
+	// 1) Without turn embeddings — distractor (token-match on
+	// "Caroline") should outrank the gold paraphrase turn.
+	off := false
+	memOff := NewPixelogMemory(PixelogConfig{
+		Embedder:   fakeConceptEmbedder{},
+		EmbedTurns: &off,
+	})
+	if err := memOff.Ingest(ctx, "t", turns); err != nil {
+		t.Fatal(err)
+	}
+	idsOff, err := memOff.Retrieve(ctx, "t", "What is Caroline's relationship status?", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	posDistractorOff, posGoldOff := indexOf(idsOff, "s1:0"), indexOf(idsOff, "s1:1")
+	if posDistractorOff < 0 || posGoldOff < 0 {
+		t.Fatalf("expected both turns in result, got %v", idsOff)
+	}
+
+	// 2) With turn embeddings — the gold paraphrase turn (concept
+	// "relationship") should now rank above or equal to the
+	// distractor (concept "food").
+	on := true
+	memOn := NewPixelogMemory(PixelogConfig{
+		Embedder:   fakeConceptEmbedder{},
+		EmbedTurns: &on,
+	})
+	if err := memOn.Ingest(ctx, "t", turns); err != nil {
+		t.Fatal(err)
+	}
+	idsOn, err := memOn.Retrieve(ctx, "t", "What is Caroline's relationship status?", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	posDistractorOn, posGoldOn := indexOf(idsOn, "s1:0"), indexOf(idsOn, "s1:1")
+	if posGoldOn < 0 {
+		t.Fatalf("gold turn missing from EmbedTurns=true result: %v", idsOn)
+	}
+	// Strict requirement: turn embeddings must improve the gold turn's
+	// ranking position (lower index = higher rank), or at minimum keep
+	// the gold turn at or above the distractor.
+	if posGoldOn > posDistractorOn {
+		t.Errorf("turn embeddings failed to lift gold above distractor: gold=%d distractor=%d (ids=%v)",
+			posGoldOn, posDistractorOn, idsOn)
+	}
+	// And it must be at least as good as the no-embed baseline.
+	if posGoldOn > posGoldOff {
+		t.Errorf("turn embeddings regressed gold rank: off=%d on=%d", posGoldOff, posGoldOn)
+	}
+}
+
+// TestEmbedTurnsConcurrent_PopulatesEmbeddings verifies that the
+// helper actually writes Embedding back into the cached turnRecord
+// (the integration with sessionIndex.Turns slice is by-value, so a
+// silent no-op here would be a real bug).
+func TestEmbedTurnsConcurrent_PopulatesEmbeddings(t *testing.T) {
+	ctx := context.Background()
+	ts := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	turns := []Turn{
+		{SessionID: "s1", TurnID: "s1:0", Speaker: "A", Text: "I love sushi.", Timestamp: ts},
+		{SessionID: "s1", TurnID: "s1:1", Speaker: "B", Text: "Let's go hiking.", Timestamp: ts},
+		{SessionID: "s2", TurnID: "s2:0", Speaker: "A", Text: "I'm currently single.", Timestamp: ts},
+	}
+	idx := buildSessionIndex(turns)
+	if err := embedTurnsConcurrent(ctx, fakeConceptEmbedder{}, idx); err != nil {
+		t.Fatalf("embedTurnsConcurrent: %v", err)
+	}
+	for si := range idx.sessions {
+		for ti := range idx.sessions[si].Turns {
+			tr := idx.sessions[si].Turns[ti]
+			if len(tr.Embedding) == 0 {
+				t.Errorf("turn %s missing Embedding after concurrent embed", tr.ID)
+			}
+		}
+	}
+	// Idempotency: running again must be a no-op (no nil-pointer
+	// panic, no double-embed).
+	if err := embedTurnsConcurrent(ctx, fakeConceptEmbedder{}, idx); err != nil {
+		t.Fatalf("second embedTurnsConcurrent: %v", err)
+	}
+}
+
+// indexOf is a local helper for slice position lookup in turn-ID
+// rankings — the bench package has many tests that assert on
+// position rather than presence.
+func indexOf(xs []string, target string) int {
+	for i, x := range xs {
+		if x == target {
+			return i
+		}
+	}
+	return -1
 }
 
 func TestRetrieveTemporalBoost(t *testing.T) {
