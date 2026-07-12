@@ -80,6 +80,8 @@ func (idx *Indexer) BuildIndex(memoryID, pixeFile string) (*MemoryIndex, error) 
 	}
 	
 	frameNum := 0
+	attempted := 0
+	var firstEmbedErr error
 	for _, file := range extractedFiles {
 		content, err := os.ReadFile(file)
 		if err != nil {
@@ -92,8 +94,12 @@ func (idx *Indexer) BuildIndex(memoryID, pixeFile string) (*MemoryIndex, error) 
 		}
 		
 		// Generate embedding
+		attempted++
 		embedding, err := idx.embedder.Embed(text)
 		if err != nil {
+			if firstEmbedErr == nil {
+				firstEmbedErr = err
+			}
 			fmt.Printf("Warning: failed to embed frame %d: %v\n", frameNum, err)
 			continue
 		}
@@ -114,6 +120,18 @@ func (idx *Indexer) BuildIndex(memoryID, pixeFile string) (*MemoryIndex, error) 
 		frameNum++
 	}
 	
+	// Every frame failed to embed — the endpoint is down, the key is
+	// dead, or the model cannot embed. A silent 0-frame index would make
+	// search return nothing forever; surface the failure so callers can
+	// fall back to another provider.
+	if attempted > 0 && index.TotalFrames == 0 {
+		return nil, fmt.Errorf("all %d frames failed to embed: %w", attempted, firstEmbedErr)
+	}
+
+	// The embedder discovers its true dimension on first successful call
+	// (local servers vary); record it after embedding, not before.
+	index.VectorDim = idx.embedder.Dim()
+
 	// Save index to disk
 	if err := idx.SaveIndex(index); err != nil {
 		return nil, fmt.Errorf("failed to save index: %w", err)

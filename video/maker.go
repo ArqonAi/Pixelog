@@ -112,7 +112,12 @@ func (m *Maker) ExtractData(inputPath, outputDir string) error {
 
 	// Extract frames from video using FFmpeg
 	framePattern := filepath.Join(tempDir, "frame_%05d.png")
-	cmd := exec.Command("ffmpeg", "-i", inputPath, "-vf", "fps=1", framePattern)
+	// Decode every stored frame 1:1. The old `-vf fps=1` filter
+	// RESAMPLED the stream to 1fps — any .pixe encoded at a higher
+	// FrameRate (default 2fps) lost every other QR frame and failed
+	// extraction with "missing chunk index N". `vsync 0` (passthrough)
+	// emits each coded frame exactly once regardless of encode rate.
+	cmd := exec.Command("ffmpeg", "-i", inputPath, "-vsync", "0", framePattern)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to extract frames: %w", err)
 	}

@@ -3,6 +3,7 @@ package converter
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"mime"
 	"os"
@@ -380,11 +381,16 @@ func (c *Converter) processFile(filePath string, encryptionPassword string) ([]q
 	return chunks, item, nil
 }
 
+// qrFramePayloadLimit bounds the marshaled chunk JSON so it always fits
+// a version-40 QR code in byte mode at error-correction level L
+// (2953-byte capacity). The margin absorbs writer overhead.
+const qrFramePayloadLimit = 2900
+
 func (c *Converter) createChunks(data, filePath, mimeType, hash string, encrypted bool) []qr.Chunk {
 	var chunks []qr.Chunk
 	chunkSize := c.config.ChunkSize - 200 // Leave room for metadata
 
-	for i := 0; i < len(data); i += chunkSize {
+	for i := 0; i < len(data); {
 		end := i + chunkSize
 		if end > len(data) {
 			end = len(data)
@@ -393,8 +399,7 @@ func (c *Converter) createChunks(data, filePath, mimeType, hash string, encrypte
 		chunk := qr.Chunk{
 			ID:         fmt.Sprintf("%s_%d", hash[:8], len(chunks)),
 			Index:      len(chunks),
-			Total:      (len(data) + chunkSize - 1) / chunkSize,
-			Data:       data[i:end],
+			Total:      0, // fixed up after the loop
 			SourceFile: filepath.Base(filePath),
 			MimeType:   mimeType,
 			Hash:       hash,
@@ -402,7 +407,31 @@ func (c *Converter) createChunks(data, filePath, mimeType, hash string, encrypte
 			CreatedAt:  time.Now(),
 		}
 
+		// JSON escaping inflates the payload unpredictably (quotes,
+		// newlines, non-ASCII → \uXXXX). Shrink the slice until the
+		// marshaled frame provably fits the QR capacity; a fixed size
+		// overflows the encoder with "Data too big" on dense content.
+		for {
+			chunk.Data = data[i:end]
+			encoded, err := json.Marshal(chunk)
+			if err == nil && len(encoded) <= qrFramePayloadLimit {
+				break
+			}
+			if end-i <= 256 {
+				break // floor: never stall on pathological input
+			}
+			over := 64
+			if err == nil {
+				over = len(encoded) - qrFramePayloadLimit + 16
+			}
+			end -= over
+			if end < i+256 {
+				end = i + 256
+			}
+		}
+
 		chunks = append(chunks, chunk)
+		i = end
 	}
 
 	// Update total count

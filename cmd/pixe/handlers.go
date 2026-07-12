@@ -22,6 +22,78 @@ import (
 // INDEXING & SEARCH
 // ============================================================================
 
+// embedConfig carries the fully-resolved embedding endpoint selection for a
+// CLI invocation. Provider is just a registry name — local inference
+// servers (vims, vllm, ollama) and hosted APIs resolve identically.
+type embedConfig struct {
+	provider string
+	apiKey   string
+	model    string
+}
+
+// resolveEmbedConfig determines provider/key/model with zero vendor bias:
+//  1. explicit --provider flag
+//  2. PIXE_EMBED_PROVIDER environment variable
+//  3. whichever credentialed provider has a key exported
+//  4. keyless local default (vims gateway, then ollama)
+//
+// A key is only mandatory when the chosen provider actually requires one.
+func resolveEmbedConfig(provider, apiKey, model string) (embedConfig, error) {
+	if provider == "" {
+		provider = os.Getenv("PIXE_EMBED_PROVIDER")
+	}
+	if apiKey == "" {
+		apiKey = os.Getenv("PIXE_EMBED_API_KEY")
+	}
+	if model == "" || model == "auto" {
+		if m := os.Getenv("PIXE_EMBED_MODEL"); m != "" {
+			model = m
+		}
+	}
+
+	if provider == "" {
+		// No explicit selection — pick from exported credentials, in a
+		// stable order, otherwise fall back to keyless local endpoints.
+		for _, cand := range []struct{ env, name string }{
+			{"OPENAI_API_KEY", "openai"},
+			{"OPENROUTER_API_KEY", "openrouter"},
+			{"GOOGLE_API_KEY", "gemini"},
+			{"ANTHROPIC_API_KEY", "anthropic"},
+			{"XAI_API_KEY", "xai"},
+		} {
+			if k := os.Getenv(cand.env); k != "" {
+				provider, apiKey = cand.name, k
+				break
+			}
+		}
+		if provider == "" {
+			provider = "vims"
+		}
+	} else if apiKey == "" {
+		// Provider chosen explicitly — pull its conventional env key.
+		switch provider {
+		case "openai":
+			apiKey = os.Getenv("OPENAI_API_KEY")
+		case "openrouter":
+			apiKey = os.Getenv("OPENROUTER_API_KEY")
+		case "google", "gemini":
+			apiKey = os.Getenv("GOOGLE_API_KEY")
+		case "anthropic", "claude":
+			apiKey = os.Getenv("ANTHROPIC_API_KEY")
+		case "xai", "grok":
+			apiKey = os.Getenv("XAI_API_KEY")
+		}
+	}
+
+	if apiKey == "" && index.KeyRequired(provider) {
+		return embedConfig{}, fmt.Errorf("provider %q requires an API key: pass --api-key, or set PIXE_EMBED_API_KEY / the provider's conventional env var; local providers (vims, vllm, ollama) need no key", provider)
+	}
+	if model == "" {
+		model = "auto"
+	}
+	return embedConfig{provider: provider, apiKey: apiKey, model: model}, nil
+}
+
 func handleIndex() {
 	if len(os.Args) < 3 {
 		fmt.Fprintln(os.Stderr, "Error: input .pixe file required")
@@ -30,8 +102,9 @@ func handleIndex() {
 	}
 
 	inputPath := os.Args[2]
-	provider := "mock"
+	provider := ""
 	apiKey := ""
+	model := ""
 	indexDir := "./indexes"
 	jsonOutput := false
 
@@ -48,6 +121,16 @@ func handleIndex() {
 				apiKey = os.Args[i+1]
 				i++
 			}
+		case "--model":
+			if i+1 < len(os.Args) {
+				model = os.Args[i+1]
+				i++
+			}
+		case "--base-url":
+			if i+1 < len(os.Args) {
+				os.Setenv("PIXE_EMBED_BASE_URL", os.Args[i+1])
+				i++
+			}
 		case "--index-dir":
 			if i+1 < len(os.Args) {
 				indexDir = os.Args[i+1]
@@ -58,40 +141,13 @@ func handleIndex() {
 		}
 	}
 
-	// Check for API key from multiple providers
-	if apiKey == "" {
-		apiKey = os.Getenv("OPENAI_API_KEY")
-		if apiKey == "" {
-			apiKey = os.Getenv("OPENROUTER_API_KEY")
+	cfg, err := resolveEmbedConfig(provider, apiKey, model)
+	if err != nil {
+		if jsonOutput {
+			fmt.Fprintf(os.Stdout, "{\"error\":%q}\n", err.Error())
+		} else {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		}
-		if apiKey == "" {
-			apiKey = os.Getenv("GOOGLE_API_KEY")
-			if apiKey != "" {
-				provider = "gemini"
-			}
-		}
-		if apiKey == "" {
-			apiKey = os.Getenv("ANTHROPIC_API_KEY")
-			if apiKey != "" {
-				provider = "anthropic"
-			}
-		}
-		if apiKey == "" {
-			apiKey = os.Getenv("XAI_API_KEY")
-			if apiKey != "" {
-				provider = "xai"
-			}
-		}
-	}
-
-	if apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Error: API key required for indexing")
-		fmt.Fprintln(os.Stderr, "Provide via --api-key flag or set one of these env vars:")
-		fmt.Fprintln(os.Stderr, "  OPENAI_API_KEY, OPENROUTER_API_KEY, GOOGLE_API_KEY, ANTHROPIC_API_KEY, XAI_API_KEY")
-		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, "Example:")
-		fmt.Fprintln(os.Stderr, "  export OPENAI_API_KEY=sk-xxx")
-		fmt.Fprintln(os.Stderr, "  pixe index file.pixe")
 		os.Exit(1)
 	}
 
@@ -100,10 +156,13 @@ func handleIndex() {
 	}
 
 	// Create embedder with auto model selection
-	embedder := index.NewSimpleEmbedder(provider, apiKey, "auto")
-	model, _ := index.GetDefaultModel(provider)
+	embedder := index.NewSimpleEmbedder(cfg.provider, cfg.apiKey, cfg.model)
+	displayModel, _ := index.GetDefaultModel(cfg.provider)
+	if cfg.model != "" && cfg.model != "auto" {
+		displayModel = cfg.model
+	}
 	if !jsonOutput {
-		fmt.Printf("Using %s with model %s (semantic search)\n", provider, model)
+		fmt.Printf("Using %s with model %s (semantic search)\n", cfg.provider, displayModel)
 	}
 
 	// Create indexer
@@ -157,8 +216,9 @@ func handleSearch() {
 	inputPath := os.Args[2]
 	query := os.Args[3]
 	topK := 5
-	provider := "openai"
+	provider := ""
 	apiKey := ""
+	model := ""
 	indexDir := "./indexes"
 	jsonOutput := false
 
@@ -185,6 +245,16 @@ func handleSearch() {
 				provider = os.Args[i+1]
 				i++
 			}
+		case "--model":
+			if i+1 < len(os.Args) {
+				model = os.Args[i+1]
+				i++
+			}
+		case "--base-url":
+			if i+1 < len(os.Args) {
+				os.Setenv("PIXE_EMBED_BASE_URL", os.Args[i+1])
+				i++
+			}
 		case "--index-dir":
 			if i+1 < len(os.Args) {
 				indexDir = os.Args[i+1]
@@ -195,36 +265,13 @@ func handleSearch() {
 		}
 	}
 
-	// Check for API key from multiple providers
-	if apiKey == "" {
-		apiKey = os.Getenv("OPENAI_API_KEY")
-		if apiKey == "" {
-			apiKey = os.Getenv("OPENROUTER_API_KEY")
+	cfg, err := resolveEmbedConfig(provider, apiKey, model)
+	if err != nil {
+		if jsonOutput {
+			fmt.Fprintf(os.Stdout, "{\"error\":%q,\"results\":[]}\n", err.Error())
+		} else {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		}
-		if apiKey == "" {
-			apiKey = os.Getenv("GOOGLE_API_KEY")
-			if apiKey != "" {
-				provider = "gemini"
-			}
-		}
-		if apiKey == "" {
-			apiKey = os.Getenv("ANTHROPIC_API_KEY")
-			if apiKey != "" {
-				provider = "anthropic"
-			}
-		}
-		if apiKey == "" {
-			apiKey = os.Getenv("XAI_API_KEY")
-			if apiKey != "" {
-				provider = "xai"
-			}
-		}
-	}
-
-	if apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Error: API key required for search (need to embed query)")
-		fmt.Fprintln(os.Stderr, "Provide via --api-key flag or set one of these env vars:")
-		fmt.Fprintln(os.Stderr, "  OPENAI_API_KEY, OPENROUTER_API_KEY, GOOGLE_API_KEY, ANTHROPIC_API_KEY, XAI_API_KEY")
 		os.Exit(1)
 	}
 
@@ -233,7 +280,7 @@ func handleSearch() {
 	}
 
 	// Create embedder for query with auto model selection
-	embedder := index.NewSimpleEmbedder(provider, apiKey, "auto")
+	embedder := index.NewSimpleEmbedder(cfg.provider, cfg.apiKey, cfg.model)
 	indexer, err := index.NewIndexer(indexDir, embedder)
 	if err != nil {
 		if jsonOutput {

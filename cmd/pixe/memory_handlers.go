@@ -29,8 +29,9 @@ func handleHybridSearch() {
 	inputPath := os.Args[2]
 	query := os.Args[3]
 	topK := 5
-	provider := "openai"
+	provider := ""
 	apiKey := ""
+	model := ""
 	indexDir := "./indexes"
 	jsonOutput := false
 	bm25Weight := 0.4
@@ -53,6 +54,16 @@ func handleHybridSearch() {
 				provider = os.Args[i+1]
 				i++
 			}
+		case "--model":
+			if i+1 < len(os.Args) {
+				model = os.Args[i+1]
+				i++
+			}
+		case "--base-url":
+			if i+1 < len(os.Args) {
+				os.Setenv("PIXE_EMBED_BASE_URL", os.Args[i+1])
+				i++
+			}
 		case "--index-dir":
 			if i+1 < len(os.Args) {
 				indexDir = os.Args[i+1]
@@ -73,9 +84,15 @@ func handleHybridSearch() {
 		}
 	}
 
-	// Resolve API key
-	if apiKey == "" {
-		apiKey = resolveAPIKey(&provider)
+	// Resolve embedding endpoint (provider-agnostic; local providers keyless)
+	cfg, cfgErr := resolveEmbedConfig(provider, apiKey, model)
+	if cfgErr != nil {
+		if jsonOutput {
+			fmt.Fprintf(os.Stdout, "{\"error\":%q,\"results\":[]}\n", cfgErr.Error())
+		} else {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", cfgErr)
+		}
+		os.Exit(1)
 	}
 
 	if !jsonOutput {
@@ -84,7 +101,7 @@ func handleHybridSearch() {
 	}
 
 	// Load the existing index
-	embedder := index.NewSimpleEmbedder(provider, apiKey, "auto")
+	embedder := index.NewSimpleEmbedder(cfg.provider, cfg.apiKey, cfg.model)
 	indexer, err := index.NewIndexer(indexDir, embedder)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -580,25 +597,4 @@ func handleMemoryStats() {
 // HELPERS
 // ============================================================================
 
-func resolveAPIKey(provider *string) string {
-	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
-		return key
-	}
-	if key := os.Getenv("OPENROUTER_API_KEY"); key != "" {
-		return key
-	}
-	if key := os.Getenv("GOOGLE_API_KEY"); key != "" {
-		*provider = "gemini"
-		return key
-	}
-	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
-		*provider = "anthropic"
-		return key
-	}
-	if key := os.Getenv("XAI_API_KEY"); key != "" {
-		*provider = "xai"
-		return key
-	}
-	return ""
-}
 

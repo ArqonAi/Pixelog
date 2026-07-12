@@ -61,7 +61,7 @@ func Default() *Config {
 
 	return &Config{
 		ChunkSize:         2800,
-		Quality:           23,
+		Quality:           0, // lossless x264 — QR frames must survive encode/decode intact
 		FrameRate:         0.5,
 		Verbose:           false,
 		TempDir:           tempDir,

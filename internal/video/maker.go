@@ -112,7 +112,12 @@ func (m *Maker) ExtractData(inputPath, outputDir string) error {
 
 	// Extract frames from video using FFmpeg
 	framePattern := filepath.Join(tempDir, "frame_%05d.png")
-	cmd := exec.Command("ffmpeg", "-i", inputPath, "-vf", "fps=1", framePattern)
+	// Decode every stored frame 1:1. The old `-vf fps=1` filter
+	// RESAMPLED the stream to 1fps — any .pixe encoded at a higher
+	// FrameRate (default 2fps) lost every other QR frame and failed
+	// extraction with "missing chunk index N". `vsync 0` (passthrough)
+	// emits each coded frame exactly once regardless of encode rate.
+	cmd := exec.Command("ffmpeg", "-i", inputPath, "-vsync", "0", framePattern)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to extract frames: %w", err)
 	}
@@ -276,21 +281,32 @@ func (m *Maker) decodeQRFromFrame(framePath string, frameIndex int) (*qr.Chunk, 
 }
 
 func (m *Maker) extractQRData(img image.Image) (string, error) {
-	// Convert image to gozxing BinaryBitmap
+	reader := qrReader.NewQRCodeReader()
+
+	// H.264 is lossy: dense QR frames come back slightly blurred and a
+	// single-shot decode intermittently fails on individual frames,
+	// which loses the chunk and aborts the whole file reassembly.
+	// Attempt 1: default HybridBinarizer. Attempt 2: TRY_HARDER hint,
+	// which enables gozxing's exhaustive search paths.
 	bmp, err := gozxing.NewBinaryBitmapFromImage(img)
 	if err != nil {
 		return "", fmt.Errorf("failed to create bitmap: %w", err)
 	}
+	if result, derr := reader.Decode(bmp, nil); derr == nil {
+		return result.GetText(), nil
+	}
 
-	// Create QR code reader
-	reader := qrReader.NewQRCodeReader()
-	
-	// Decode the QR code
-	result, err := reader.Decode(bmp, nil)
+	hints := map[gozxing.DecodeHintType]interface{}{
+		gozxing.DecodeHintType_TRY_HARDER: true,
+	}
+	bmp2, err := gozxing.NewBinaryBitmapFromImage(img)
+	if err != nil {
+		return "", fmt.Errorf("failed to create bitmap: %w", err)
+	}
+	result, err := reader.Decode(bmp2, hints)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode QR code: %w", err)
 	}
-
 	return result.GetText(), nil
 }
 
