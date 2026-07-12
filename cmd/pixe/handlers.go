@@ -24,7 +24,8 @@ import (
 
 // embedConfig carries the fully-resolved embedding endpoint selection for a
 // CLI invocation. Provider is just a registry name — local inference
-// servers (vims, vllm, ollama) and hosted APIs resolve identically.
+// servers (vims — the vLLM endpoint — and ollama) and hosted APIs resolve
+// identically.
 type embedConfig struct {
 	provider string
 	apiKey   string
@@ -35,7 +36,7 @@ type embedConfig struct {
 //  1. explicit --provider flag
 //  2. PIXE_EMBED_PROVIDER environment variable
 //  3. whichever credentialed provider has a key exported
-//  4. keyless local default (vims gateway, then ollama)
+//  4. keyless local default (vims, i.e. the vLLM endpoint)
 //
 // A key is only mandatory when the chosen provider actually requires one.
 func resolveEmbedConfig(provider, apiKey, model string) (embedConfig, error) {
@@ -86,7 +87,7 @@ func resolveEmbedConfig(provider, apiKey, model string) (embedConfig, error) {
 	}
 
 	if apiKey == "" && index.KeyRequired(provider) {
-		return embedConfig{}, fmt.Errorf("provider %q requires an API key: pass --api-key, or set PIXE_EMBED_API_KEY / the provider's conventional env var; local providers (vims, vllm, ollama) need no key", provider)
+		return embedConfig{}, fmt.Errorf("provider %q requires an API key: pass --api-key, or set PIXE_EMBED_API_KEY / the provider's conventional env var; local providers (vims, ollama) need no key", provider)
 	}
 	if model == "" {
 		model = "auto"

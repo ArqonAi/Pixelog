@@ -13,7 +13,7 @@ import (
 
 // This embedder is provider-agnostic by construction. A provider is just a
 // named EndpointSpec: base URL + wire dialect + auth style + default model.
-// Nothing below privileges any vendor — local inference servers (vims, vLLM,
+// Nothing below privileges any vendor — local inference servers (vims,
 // Ollama, llama.cpp, TEI, LocalAI, LM Studio) and hosted APIs are all
 // expressed through the same table, and every field can be overridden at
 // runtime via flags or PIXE_EMBED_* environment variables.
@@ -66,17 +66,11 @@ func normalizeBase(u string) string {
 func providerSpec(provider string) EndpointSpec {
 	base := envOr("PIXE_EMBED_BASE_URL")
 	switch strings.ToLower(provider) {
-	case "vims":
+	case "vims", "vllm":
+		// vims IS vLLM — the VIMS local provider is the vLLM server.
+		// "vllm" is accepted as an alias of the same endpoint.
 		if base == "" {
-			base = envOr("VIMS_GATEWAY_URL")
-		}
-		if base == "" {
-			base = "http://127.0.0.1:8089/v1"
-		}
-		return EndpointSpec{BaseURL: normalizeBase(base), Path: "/embeddings", Dialect: dialectStandard, AuthHeader: "Authorization", AuthPrefix: "Bearer ", DefaultModel: "auto"}
-	case "vllm":
-		if base == "" {
-			base = envOr("VLLM_ENDPOINT")
+			base = envOr("VLLM_ENDPOINT", "VIMS_GATEWAY_URL")
 		}
 		if base == "" {
 			base = "http://127.0.0.1:8000/v1"
