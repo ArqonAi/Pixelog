@@ -233,14 +233,20 @@ func handleConvert() {
 		os.Exit(1)
 	}
 
-	// Initialize converter
+	// Initialize converter.
+	//
+	// EncryptionEnabled must track --encrypt. The encryption service returns
+	// its input unchanged when disabled, so leaving this unset accepted
+	// --encrypt and --password, required the password, printed success, and
+	// wrote the file in plaintext.
 	cfg := &config.Config{
-		ChunkSize: 2900,
-		FrameRate: 2.0,
-		Quality:   23,
-		Verbose:   true,
-		TempDir:   "./temp",
-		OutputDir: "./output",
+		ChunkSize:         2900,
+		FrameRate:         2.0,
+		Quality:           23,
+		Verbose:           true,
+		TempDir:           "./temp",
+		OutputDir:         "./output",
+		EncryptionEnabled: encrypt,
 	}
 
 	conv, err := converter.New(cfg)
@@ -319,14 +325,17 @@ func handleExtract() {
 		}
 	}
 
-	// Initialize converter
+	// Initialize converter. A password implies the capsule is encrypted, and
+	// the crypto service must be enabled for Extract's decryption pass to do
+	// anything at all.
 	cfg := &config.Config{
-		ChunkSize: 2900,
-		FrameRate: 2.0,
-		Quality:   23,
-		Verbose:   true,
-		TempDir:   "./temp",
-		OutputDir: outputDir,
+		ChunkSize:         2900,
+		FrameRate:         2.0,
+		Quality:           23,
+		Verbose:           true,
+		TempDir:           "./temp",
+		OutputDir:         outputDir,
+		EncryptionEnabled: password != "",
 	}
 
 	conv, err := converter.New(cfg)

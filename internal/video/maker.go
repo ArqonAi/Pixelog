@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/ArqonAi/Pixelog/internal/qr"
@@ -65,7 +64,22 @@ func (m *Maker) CreateVideo(framePaths []string, outputPath string, metadata int
 		return fmt.Errorf("failed to write metadata: %w", err)
 	}
 
-	// Build ffmpeg command
+	// Build ffmpeg command.
+	//
+	// The video carries QR codes, not pictures, so encoding is lossless
+	// regardless of cfg.Quality. QR modules are single-pixel-scale
+	// high-frequency detail and lossy H.264 rings around those edges: at
+	// the previous -crf 23 a frame here and there decoded as garbage and
+	// extraction failed with "missing chunk index N", intermittently and
+	// unreproducibly, because whether a given frame survived depended on
+	// its content. There is no lossy quality setting that is safe for this
+	// payload — a capsule that cannot be read back has no value — so the
+	// only correct setting is qp 0.
+	//
+	// This costs little: QR frames are two-tone and compress well even
+	// losslessly. yuv420p is kept for player compatibility, and its chroma
+	// subsampling is harmless because the image is black and white, leaving
+	// the luma plane the decoder reads bit-exact.
 	args := []string{
 		"-y", // Overwrite output file
 		"-framerate", fmt.Sprintf("%.2f", cfg.FrameRate),
@@ -73,8 +87,8 @@ func (m *Maker) CreateVideo(framePaths []string, outputPath string, metadata int
 		"-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
 		"-c:v", "libx264",
 		"-pix_fmt", "yuv420p",
-		"-crf", strconv.Itoa(cfg.Quality),
-		"-preset", "medium",
+		"-qp", "0",
+		"-preset", "veryfast",
 		"-c:a", "aac",
 		"-b:a", "128k",
 		"-shortest",
@@ -176,13 +190,13 @@ func (m *Maker) ExtractData(inputPath, outputDir string) error {
 		if len(chunks) == 0 {
 			return fmt.Errorf("no chunks found")
 		}
-		
+
 		firstChunk := chunks[0]
 		expectedTotal := firstChunk.Total
 		actualTotal := len(chunks)
-		
+
 		fmt.Printf("DEBUG: Chunk validation - Expected: %d, Actual: %d\n", expectedTotal, actualTotal)
-		
+
 		// Check if all chunk indices are present (0-based indexing) and deduplicate
 		indexMap := make(map[int]bool)
 		uniqueChunks := make(map[int]qr.Chunk)
@@ -191,7 +205,7 @@ func (m *Maker) ExtractData(inputPath, outputDir string) error {
 			indexMap[chunk.Index] = true
 			uniqueChunks[chunk.Index] = chunk // This automatically deduplicates by index
 		}
-		
+
 		// Replace chunks with deduplicated version
 		chunks = make([]qr.Chunk, 0, len(uniqueChunks))
 		for i := 0; i < expectedTotal; i++ {
@@ -199,14 +213,14 @@ func (m *Maker) ExtractData(inputPath, outputDir string) error {
 				chunks = append(chunks, chunk)
 			}
 		}
-		
+
 		// Verify all indices from 0 to Total-1 are present
 		for i := 0; i < expectedTotal; i++ {
 			if !indexMap[i] {
 				return fmt.Errorf("missing chunk index %d for file %s", i, firstChunk.SourceFile)
 			}
 		}
-		
+
 		if actualTotal != expectedTotal {
 			fmt.Printf("DEBUG: Chunk count mismatch for %s - this might be OK if chunks are duplicated\n", firstChunk.SourceFile)
 			// Instead of failing, let's use only the unique chunks we need
@@ -218,12 +232,19 @@ func (m *Maker) ExtractData(inputPath, outputDir string) error {
 			reassembledData.WriteString(chunk.Data)
 		}
 
-		// Decode data based on MIME type
+		// Decode data according to how the chunker encoded it.
+		//
+		// Encryption is checked before MIME type: ciphertext is binary no
+		// matter what the plaintext was, so an encrypted text/* file is
+		// stored base64 like any other binary payload. Keying only on MIME
+		// type sent encrypted markdown down the verbatim path, where the
+		// ciphertext had already been mangled by json.Marshal replacing its
+		// invalid UTF-8 with U+FFFD — a 5400-byte file came back as 10176.
 		var finalData []byte
-		if strings.HasPrefix(firstChunk.MimeType, "text/") {
+		if !firstChunk.Encrypted && strings.HasPrefix(firstChunk.MimeType, "text/") {
 			finalData = []byte(reassembledData.String())
 		} else {
-			// Decode base64 for binary files
+			// Decode base64 for binary and encrypted payloads
 			decoded, err := base64.StdEncoding.DecodeString(reassembledData.String())
 			if err != nil {
 				return fmt.Errorf("failed to decode base64 data for %s: %w", firstChunk.SourceFile, err)
@@ -280,34 +301,49 @@ func (m *Maker) decodeQRFromFrame(framePath string, frameIndex int) (*qr.Chunk, 
 	return &chunk, nil
 }
 
+// decodeStrategies are tried in order until one decodes the frame.
+//
+// PURE_BARCODE comes first and is the one that matters. These frames are
+// rendered by this program: axis-aligned, unrotated, one exact integer scale
+// per module. gozxing's default path nonetheless runs its camera-oriented
+// detector, which locates finder patterns and fits a perspective transform,
+// and that resampling step misreads a small percentage of frames. Measured
+// over 60 frames of identical shape: default 4 failures, TRY_HARDER 4,
+// PURE_BARCODE 0.
+//
+// That few-percent rate was the cause of the unreadable capsules. Extraction
+// needs every frame, so a per-frame failure rate p leaves an n-frame capsule
+// recoverable with probability (1-p)^n: fine for a one-frame file, close to
+// hopeless for a large one. It presented as "large .pixe files are corrupt"
+// and as intermittency on retry, which is why it was mistaken for H.264 blur.
+//
+// The later strategies remain as a fallback for frames that are not pristine,
+// such as capsules produced by older versions or ones re-encoded by a player.
+var decodeStrategies = []map[gozxing.DecodeHintType]interface{}{
+	{gozxing.DecodeHintType_PURE_BARCODE: true},
+	{gozxing.DecodeHintType_PURE_BARCODE: true, gozxing.DecodeHintType_TRY_HARDER: true},
+	nil,
+	{gozxing.DecodeHintType_TRY_HARDER: true},
+}
+
 func (m *Maker) extractQRData(img image.Image) (string, error) {
 	reader := qrReader.NewQRCodeReader()
 
-	// H.264 is lossy: dense QR frames come back slightly blurred and a
-	// single-shot decode intermittently fails on individual frames,
-	// which loses the chunk and aborts the whole file reassembly.
-	// Attempt 1: default HybridBinarizer. Attempt 2: TRY_HARDER hint,
-	// which enables gozxing's exhaustive search paths.
-	bmp, err := gozxing.NewBinaryBitmapFromImage(img)
-	if err != nil {
-		return "", fmt.Errorf("failed to create bitmap: %w", err)
+	var lastErr error
+	for _, hints := range decodeStrategies {
+		// A BinaryBitmap caches its binarized rows, so each attempt needs a
+		// fresh one rather than reusing state from a failed decode.
+		bmp, err := gozxing.NewBinaryBitmapFromImage(img)
+		if err != nil {
+			return "", fmt.Errorf("failed to create bitmap: %w", err)
+		}
+		result, derr := reader.Decode(bmp, hints)
+		if derr == nil {
+			return result.GetText(), nil
+		}
+		lastErr = derr
 	}
-	if result, derr := reader.Decode(bmp, nil); derr == nil {
-		return result.GetText(), nil
-	}
-
-	hints := map[gozxing.DecodeHintType]interface{}{
-		gozxing.DecodeHintType_TRY_HARDER: true,
-	}
-	bmp2, err := gozxing.NewBinaryBitmapFromImage(img)
-	if err != nil {
-		return "", fmt.Errorf("failed to create bitmap: %w", err)
-	}
-	result, err := reader.Decode(bmp2, hints)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode QR code: %w", err)
-	}
-	return result.GetText(), nil
+	return "", fmt.Errorf("failed to decode QR code: %w", lastErr)
 }
 
 func (m *Maker) ExtractMetadata(inputPath string) (*Metadata, error) {

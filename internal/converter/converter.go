@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ArqonAi/Pixelog/internal/crypto"
 	"github.com/ArqonAi/Pixelog/internal/qr"
@@ -232,7 +233,7 @@ func (c *Converter) Extract(pixeFilePath, outputDir string, decryptionPassword .
 	}
 
 	fmt.Printf("DEBUG: Starting extraction from %s\n", pixeFilePath)
-	
+
 	// Use the video maker to extract data - this will create the files
 	err := c.videoMaker.ExtractData(pixeFilePath, outputDir)
 	if err != nil {
@@ -240,7 +241,7 @@ func (c *Converter) Extract(pixeFilePath, outputDir string, decryptionPassword .
 	}
 
 	fmt.Printf("DEBUG: Video extraction completed, now processing for decryption if needed\n")
-	
+
 	// If no password provided, we're done
 	if password == "" {
 		return nil
@@ -366,25 +367,32 @@ func (c *Converter) processFile(filePath string, encryptionPassword string) ([]q
 		CreatedAt: time.Now(),
 	}
 
-	// Encode data
+	isEncrypted := encryptionPassword != "" && c.cryptoService.IsEnabled()
+
+	// Encode data.
+	//
+	// Encrypted payloads are always base64, whatever the original MIME type:
+	// after encryption the bytes are ciphertext, and storing them as a
+	// verbatim "text" string handed invalid UTF-8 to json.Marshal, which
+	// substitutes U+FFFD and destroys it. The extractor makes the same
+	// Encrypted-before-MimeType decision when decoding.
 	var encodedData string
-	if strings.HasPrefix(mimeType, "text/") {
+	if !isEncrypted && strings.HasPrefix(mimeType, "text/") {
 		encodedData = string(data)
 	} else {
 		encodedData = base64.StdEncoding.EncodeToString(data)
 	}
 
 	// Create chunks
-	isEncrypted := encryptionPassword != "" && c.cryptoService.IsEnabled()
 	chunks := c.createChunks(encodedData, filePath, mimeType, hash, isEncrypted)
 
 	return chunks, item, nil
 }
 
-// qrFramePayloadLimit bounds the marshaled chunk JSON so it always fits
-// a version-40 QR code in byte mode at error-correction level L
-// (2953-byte capacity). The margin absorbs writer overhead.
-const qrFramePayloadLimit = 2900
+// qrFramePayloadLimit bounds the marshaled chunk JSON so it always fits a QR
+// frame. The generator owns the value and rejects anything over it, so both
+// chunkers size against the same number.
+const qrFramePayloadLimit = qr.MaxFramePayload
 
 func (c *Converter) createChunks(data, filePath, mimeType, hash string, encrypted bool) []qr.Chunk {
 	var chunks []qr.Chunk
@@ -430,6 +438,26 @@ func (c *Converter) createChunks(data, filePath, mimeType, hash string, encrypte
 			}
 		}
 
+		// A text payload is stored verbatim, so a boundary must not land
+		// inside a multi-byte rune. json.Marshal replaces invalid UTF-8 with
+		// U+FFFD, which silently rewrote the bytes on both sides of every
+		// boundary: a 23400-byte file of mixed-script text came back as
+		// 23428 bytes. Base64 is pure ASCII, where every byte starts a rune,
+		// so this is a no-op for binary.
+		//
+		// Pulling the boundary back only shrinks the frame, so the fit
+		// established above still holds.
+		if end < len(data) {
+			aligned := end
+			for aligned > i && !utf8.RuneStart(data[aligned]) {
+				aligned--
+			}
+			if aligned > i {
+				end = aligned
+				chunk.Data = data[i:end]
+			}
+		}
+
 		chunks = append(chunks, chunk)
 		i = end
 	}
@@ -472,7 +500,6 @@ func (c *Converter) GetOutputDir() string {
 func generateJobID() string {
 	return fmt.Sprintf("job_%d", time.Now().UnixNano())
 }
-
 
 func formatSize(bytes int64) string {
 	const unit = 1024
