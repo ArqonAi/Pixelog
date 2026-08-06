@@ -9,20 +9,24 @@ import (
 	"path/filepath"
 	"sort"
 	"time"
-	
+
 	"github.com/ArqonAi/Pixelog/internal/video"
 )
 
 type Indexer struct {
-	indexDir     string
-	embedder     Embedder
-	videoMaker   *video.Maker
+	indexDir   string
+	embedder   Embedder
+	videoMaker *video.Maker
 }
 
 // Embedder interface for generating vector embeddings
 type Embedder interface {
 	Embed(text string) ([]float32, error)
 	Dim() int
+	// MaxInputChars is the largest input the endpoint accepts.
+	// Callers split to this size; an embedder that cannot determine a
+	// limit returns its safe ceiling rather than zero.
+	MaxInputChars() int
 }
 
 // NewIndexer creates an indexer
@@ -31,12 +35,12 @@ func NewIndexer(indexDir string, embedder Embedder) (*Indexer, error) {
 	if err := os.MkdirAll(indexDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create index directory: %w", err)
 	}
-	
+
 	maker, err := video.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create video maker: %w", err)
 	}
-	
+
 	return &Indexer{
 		indexDir:   indexDir,
 		embedder:   embedder,
@@ -49,36 +53,36 @@ func (idx *Indexer) BuildIndex(memoryID, pixeFile string) (*MemoryIndex, error) 
 	if idx.embedder == nil {
 		return nil, fmt.Errorf("embedder required for building index - provide API key")
 	}
-	
+
 	fmt.Printf("Building index for %s...\n", memoryID)
-	
+
 	// Extract all frames (one-time cost)
 	tempDir, err := os.MkdirTemp("", "pixelog-index-*")
 	if err != nil {
 		return nil, err
 	}
 	defer os.RemoveAll(tempDir)
-	
+
 	err = idx.videoMaker.ExtractData(pixeFile, tempDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract frames: %w", err)
 	}
-	
+
 	// Read all extracted files and build frame index
 	extractedFiles, err := filepath.Glob(filepath.Join(tempDir, "*"))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	index := &MemoryIndex{
-		MemoryID:    memoryID,
-		PixeFile:    pixeFile,
-		VectorDim:   idx.embedder.Dim(),
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-		Version:     1,
+		MemoryID:  memoryID,
+		PixeFile:  pixeFile,
+		VectorDim: idx.embedder.Dim(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Version:   1,
 	}
-	
+
 	frameNum := 0
 	attempted := 0
 	var firstEmbedErr error
@@ -87,39 +91,46 @@ func (idx *Indexer) BuildIndex(memoryID, pixeFile string) (*MemoryIndex, error) 
 		if err != nil {
 			continue
 		}
-		
+
 		text := string(content)
 		if len(text) == 0 {
 			continue
 		}
-		
-		// Generate embedding
-		attempted++
-		embedding, err := idx.embedder.Embed(text)
-		if err != nil {
-			if firstEmbedErr == nil {
-				firstEmbedErr = err
+
+		// Split to what the endpoint accepts rather than handing it
+		// the whole frame. Embedders have small contexts — a 512-token
+		// sentence encoder is typical — and an oversized input is
+		// rejected outright, so a single long frame used to take the
+		// entire index down with it. Chunking keeps every byte
+		// searchable instead of truncating the tail away.
+		chunks := splitForEmbedding(text, idx.embedder.MaxInputChars())
+		for chunkIdx, chunk := range chunks {
+			attempted++
+			embedding, err := idx.embedder.Embed(chunk)
+			if err != nil {
+				if firstEmbedErr == nil {
+					firstEmbedErr = err
+				}
+				fmt.Printf("Warning: failed to embed frame %d chunk %d: %v\n", frameNum, chunkIdx, err)
+				continue
 			}
-			fmt.Printf("Warning: failed to embed frame %d: %v\n", frameNum, err)
-			continue
+
+			frameIdx := FrameIndex{
+				FrameNumber: frameNum,
+				ChunkIndex:  chunkIdx,
+				SourceFile:  filepath.Base(file),
+				ContentHash: fmt.Sprintf("%x", sha256.Sum256([]byte(chunk))),
+				ContentLen:  len(chunk),
+				Embedding:   embedding,
+				Preview:     truncate(chunk, 200),
+			}
+
+			index.Frames = append(index.Frames, frameIdx)
+			index.TotalFrames++
 		}
-		
-		// Create frame index entry
-		frameIdx := FrameIndex{
-			FrameNumber:  frameNum,
-			ChunkIndex:   frameNum, // TODO: Get from chunk metadata
-			SourceFile:   filepath.Base(file),
-			ContentHash:  fmt.Sprintf("%x", sha256.Sum256(content)),
-			ContentLen:   len(content),
-			Embedding:    embedding,
-			Preview:      truncate(text, 200),
-		}
-		
-		index.Frames = append(index.Frames, frameIdx)
-		index.TotalFrames++
 		frameNum++
 	}
-	
+
 	// Every frame failed to embed — the endpoint is down, the key is
 	// dead, or the model cannot embed. A silent 0-frame index would make
 	// search return nothing forever; surface the failure so callers can
@@ -136,7 +147,7 @@ func (idx *Indexer) BuildIndex(memoryID, pixeFile string) (*MemoryIndex, error) 
 	if err := idx.SaveIndex(index); err != nil {
 		return nil, fmt.Errorf("failed to save index: %w", err)
 	}
-	
+
 	fmt.Printf("Index built: %d frames, %d dimensions\n", index.TotalFrames, index.VectorDim)
 	return index, nil
 }
@@ -148,29 +159,29 @@ func (idx *Indexer) Search(index *MemoryIndex, query string, topK int) ([]Search
 	if err != nil {
 		return nil, fmt.Errorf("failed to embed query: %w", err)
 	}
-	
+
 	// Calculate cosine similarity for all frames
 	type scored struct {
 		frame FrameIndex
 		score float32
 	}
-	
+
 	scores := make([]scored, 0, len(index.Frames))
 	for _, frame := range index.Frames {
 		similarity := cosineSimilarity(queryEmbed, frame.Embedding)
 		scores = append(scores, scored{frame: frame, score: similarity})
 	}
-	
+
 	// Sort by score descending
 	sort.Slice(scores, func(i, j int) bool {
 		return scores[i].score > scores[j].score
 	})
-	
+
 	// Return top K results
 	if topK > len(scores) {
 		topK = len(scores)
 	}
-	
+
 	results := make([]SearchResult, topK)
 	for i := 0; i < topK; i++ {
 		results[i] = SearchResult{
@@ -181,7 +192,7 @@ func (idx *Indexer) Search(index *MemoryIndex, query string, topK int) ([]Search
 			ChunkIndex:  scores[i].frame.ChunkIndex,
 		}
 	}
-	
+
 	return results, nil
 }
 
@@ -192,12 +203,12 @@ func (idx *Indexer) LoadIndex(memoryID string) (*MemoryIndex, error) {
 	if err != nil {
 		return nil, fmt.Errorf("index not found: %w", err)
 	}
-	
+
 	var index MemoryIndex
 	if err := json.Unmarshal(data, &index); err != nil {
 		return nil, fmt.Errorf("failed to parse index: %w", err)
 	}
-	
+
 	return &index, nil
 }
 
@@ -208,11 +219,11 @@ func (idx *Indexer) SaveIndex(index *MemoryIndex) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal index: %w", err)
 	}
-	
+
 	if err := os.WriteFile(indexPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write index: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -221,18 +232,18 @@ func cosineSimilarity(a, b []float32) float32 {
 	if len(a) != len(b) {
 		return 0
 	}
-	
+
 	var dotProduct, normA, normB float32
 	for i := range a {
 		dotProduct += a[i] * b[i]
 		normA += a[i] * a[i]
 		normB += b[i] * b[i]
 	}
-	
+
 	if normA == 0 || normB == 0 {
 		return 0
 	}
-	
+
 	return dotProduct / (float32(math.Sqrt(float64(normA))) * float32(math.Sqrt(float64(normB))))
 }
 

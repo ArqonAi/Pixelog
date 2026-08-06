@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 // This embedder is provider-agnostic by construction. A provider is just a
@@ -141,6 +143,12 @@ type SimpleEmbedder struct {
 	model    string
 	dim      int
 	client   *http.Client
+
+	// maxTokens is the endpoint's advertised input ceiling, discovered
+	// once from its /models listing. Zero means it does not advertise
+	// one.
+	maxTokens     int
+	maxTokensOnce sync.Once
 }
 
 // NewSimpleEmbedder creates an embedder for the named provider. The key is
@@ -230,10 +238,128 @@ func (e *SimpleEmbedder) resolveModel() string {
 	return e.model
 }
 
+// resolveMaxTokens discovers the endpoint's input ceiling from its
+// /models listing, once.
+//
+// Inference servers advertise this as `max_model_len` (vLLM, TGI,
+// llama.cpp, LM Studio all do). Reading it is the difference between
+// respecting a 512-token embedder and posting 2000 tokens at it, and it
+// needs no per-provider table that would drift as models change.
+//
+// Runs independently of resolveModel, which short-circuits whenever a
+// concrete model is already configured — the common case, and the
+// reason the listing was never consulted before.
+//
+// Zero on any failure: an endpoint that does not advertise a limit is a
+// normal case (hosted APIs generally don't), and MaxInputChars applies
+// the absolute cap instead.
+func (e *SimpleEmbedder) resolveMaxTokens() int {
+	e.maxTokensOnce.Do(func() {
+		req, err := http.NewRequest("GET", e.spec.BaseURL+"/models", nil)
+		if err != nil {
+			return
+		}
+		if e.apiKey != "" && e.spec.AuthHeader != "" {
+			req.Header.Set(e.spec.AuthHeader, e.spec.AuthPrefix+e.apiKey)
+		}
+		resp, err := e.client.Do(req)
+		if err != nil {
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			return
+		}
+		var list struct {
+			Data []struct {
+				ID          string `json:"id"`
+				MaxModelLen int    `json:"max_model_len"`
+			} `json:"data"`
+		}
+		if json.NewDecoder(resp.Body).Decode(&list) != nil {
+			return
+		}
+		// Prefer the entry matching the model actually in use; a
+		// multi-model server may list several with different limits.
+		for _, m := range list.Data {
+			if m.ID == e.model && m.MaxModelLen > 0 {
+				e.maxTokens = m.MaxModelLen
+				return
+			}
+		}
+		for _, m := range list.Data {
+			if m.MaxModelLen > 0 {
+				e.maxTokens = m.MaxModelLen
+				return
+			}
+		}
+	})
+	return e.maxTokens
+}
+
+// truncateRunes cuts text to at most limit bytes without splitting a
+// multi-byte character, which would produce invalid UTF-8 and be
+// rejected as malformed JSON by the endpoint.
+func truncateRunes(text string, limit int) string {
+	if len(text) <= limit {
+		return text
+	}
+	cut := limit
+	for cut > 0 && !utf8.RuneStart(text[cut]) {
+		cut--
+	}
+	return text[:cut]
+}
+
+// absoluteCharCap bounds input for endpoints that do not advertise a
+// limit. Not a guess at any model's context — just a ceiling so a
+// pathological frame cannot post megabytes.
+const absoluteCharCap = 8000
+
+// charsPerToken converts a token budget into a character budget.
+//
+// Deliberately pessimistic. English prose runs about 4 characters per
+// token, but code, punctuation-dense text and non-Latin scripts run
+// far lower, and the failure is asymmetric: overshoot returns HTTP 400
+// and the frame is lost entirely, while undershoot only means the
+// caller splits into one more chunk. Chunking (see MaxInputChars
+// callers) means a smaller budget costs nothing but an extra request.
+const charsPerToken = 3
+
+// reservedTokens covers the special tokens sentence encoders add around
+// the input (BERT-family models prepend [CLS] and append [SEP], so a
+// 512-token model accepts 510 of ours).
+const reservedTokens = 2
+
+// MaxInputChars is the largest input this endpoint accepts, in
+// characters. Callers chunk to this size; Embed enforces it as a
+// backstop.
+func (e *SimpleEmbedder) MaxInputChars() int {
+	tokens := e.resolveMaxTokens()
+	if tokens <= 0 {
+		return absoluteCharCap
+	}
+	budget := (tokens - reservedTokens) * charsPerToken
+	if budget < 1 {
+		budget = 1
+	}
+	if budget > absoluteCharCap {
+		budget = absoluteCharCap
+	}
+	return budget
+}
+
 // Embed generates the embedding vector for the given text.
 func (e *SimpleEmbedder) Embed(text string) ([]float32, error) {
-	if len(text) > 8000 {
-		text = text[:8000]
+	// Bound by what the endpoint actually accepts, not a fixed byte
+	// count. A hardcoded 8000-byte cap silently allowed ~2000 tokens
+	// into a 512-token model, so every frame over the limit failed
+	// with HTTP 400 and indexing produced nothing.
+	//
+	// Callers should chunk to MaxInputChars so nothing is dropped;
+	// this truncation is the backstop for those that don't.
+	if limit := e.MaxInputChars(); len(text) > limit {
+		text = truncateRunes(text, limit)
 	}
 	if e.spec.RequireKey && e.apiKey == "" {
 		return nil, fmt.Errorf("provider %q requires an API key (set --api-key or PIXE_EMBED_API_KEY)", e.provider)
@@ -248,12 +374,6 @@ func (e *SimpleEmbedder) Embed(text string) ([]float32, error) {
 		vec, err = e.embedOllamaNative(text)
 	default:
 		vec, err = e.embedStandard(text)
-		// Older Ollama builds lack the standard route — retry native.
-		if err != nil && e.provider == "ollama" {
-			if nvec, nerr := e.embedOllamaNative(text); nerr == nil {
-				vec, err = nvec, nil
-			}
-		}
 	}
 	if err != nil {
 		return nil, err
