@@ -8,7 +8,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ArqonAi/Pixelog/internal/video"
 )
@@ -104,14 +106,20 @@ func (idx *Indexer) BuildIndex(memoryID, pixeFile string) (*MemoryIndex, error) 
 		// entire index down with it. Chunking keeps every byte
 		// searchable instead of truncating the tail away.
 		chunks := splitForEmbedding(text, idx.embedder.MaxInputChars())
+		// The character budget is an estimate; dense text (JSON, code)
+		// runs more tokens per character. A chunk the endpoint rejects
+		// as too long is halved and retried until it fits.
+		chunks, embeddings, err := embedFitting(idx.embedder, chunks)
+		if err != nil {
+			if firstEmbedErr == nil {
+				firstEmbedErr = err
+			}
+			fmt.Printf("Warning: failed to embed part of frame %d: %v\n", frameNum, err)
+		}
 		for chunkIdx, chunk := range chunks {
 			attempted++
-			embedding, err := idx.embedder.Embed(chunk)
-			if err != nil {
-				if firstEmbedErr == nil {
-					firstEmbedErr = err
-				}
-				fmt.Printf("Warning: failed to embed frame %d chunk %d: %v\n", frameNum, chunkIdx, err)
+			embedding := embeddings[chunkIdx]
+			if embedding == nil {
 				continue
 			}
 
@@ -252,4 +260,54 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "..."
+}
+
+// embedder is what embedFitting needs from SimpleEmbedder.
+type chunkEmbedder interface {
+	Embed(text string) ([]float32, error)
+}
+
+// minEmbedChunk is the smallest piece embedFitting will split down to.
+const minEmbedChunk = 64
+
+// embedFitting embeds each chunk, halving any the endpoint rejects for
+// length (at a rune boundary) and retrying, so every byte stays
+// searchable. It returns the final chunks with their embeddings (nil for
+// a chunk that failed for another reason) and the first such error.
+func embedFitting(e chunkEmbedder, chunks []string) ([]string, [][]float32, error) {
+	var outChunks []string
+	var outVecs [][]float32
+	var firstErr error
+	queue := append([]string(nil), chunks...)
+	for len(queue) > 0 {
+		chunk := queue[0]
+		queue = queue[1:]
+		vec, err := e.Embed(chunk)
+		if err != nil && isInputTooLong(err) && len(chunk) > minEmbedChunk {
+			mid := len(chunk) / 2
+			for mid > 0 && !utf8.RuneStart(chunk[mid]) {
+				mid--
+			}
+			queue = append([]string{chunk[:mid], chunk[mid:]}, queue...)
+			continue
+		}
+		if err != nil && firstErr == nil {
+			firstErr = err
+		}
+		outChunks = append(outChunks, chunk)
+		outVecs = append(outVecs, vec)
+	}
+	return outChunks, outVecs, firstErr
+}
+
+// isInputTooLong recognises an endpoint refusing input over its context
+// (vLLM, OpenAI, TEI, llama.cpp wording).
+func isInputTooLong(err error) bool {
+	msg := strings.ToLower(err.Error())
+	for _, s := range []string{"maximum context length", "too long", "too many tokens", "exceeds the maximum", "input length", "context window"} {
+		if strings.Contains(msg, s) {
+			return true
+		}
+	}
+	return false
 }
