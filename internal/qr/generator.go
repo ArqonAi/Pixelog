@@ -166,12 +166,24 @@ func scaleMatrix(bm *gozxing.BitMatrix) (image.Image, error) {
 	return img, nil
 }
 
+// GenerateFrames writes one QR frame per chunk into a directory of its own
+// under the generator's (frame_00000.png …, the sequence ffmpeg reads).
+// Every conversion used to share one directory with the same names, so two
+// running at once — the daemon converts chat sessions and flow runs in
+// parallel — overwrote each other's frames: capsules held another file's
+// chunks, or lost chunk 0, and could never be read back. The caller removes
+// the directory (filepath.Dir of any frame) when the video is made.
 func (g *Generator) GenerateFrames(chunks []Chunk) ([]string, error) {
 	var framePaths []string
+	dir, err := os.MkdirTemp(g.outputDir, "frames-*")
+	if err != nil {
+		return nil, fmt.Errorf("frame directory: %w", err)
+	}
 
 	for i, chunk := range chunks {
-		framePath := filepath.Join(g.outputDir, fmt.Sprintf("frame_%05d.png", i))
+		framePath := filepath.Join(dir, fmt.Sprintf("frame_%05d.png", i))
 		if err := encodeFrame(chunk, framePath); err != nil {
+			os.RemoveAll(dir)
 			return nil, fmt.Errorf("chunk %d: %w", i, err)
 		}
 		framePaths = append(framePaths, framePath)

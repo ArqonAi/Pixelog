@@ -120,11 +120,9 @@ func (c *Converter) CreateENJ(manifest *AgentManifest, outputPath string, passwo
 	if err != nil {
 		return fmt.Errorf("failed to generate QR frames: %w", err)
 	}
-	defer func() {
-		for _, p := range framePaths {
-			os.Remove(p)
-		}
-	}()
+	if len(framePaths) > 0 {
+		defer os.RemoveAll(filepath.Dir(framePaths[0])) // the conversion's own frame directory
+	}
 
 	// Ensure output directory exists
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {

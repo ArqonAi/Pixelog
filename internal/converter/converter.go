@@ -187,6 +187,9 @@ func (c *Converter) Convert(inputPath, outputPath string, progressChan chan<- Pr
 		c.setJob(jobID, job)
 		return fmt.Errorf("failed to generate QR frames: %w", err)
 	}
+	if len(framePaths) > 0 {
+		defer os.RemoveAll(filepath.Dir(framePaths[0])) // the conversion's own frame directory
+	}
 
 	updateProgress("Creating video", 80, "Assembling video file...")
 
@@ -210,10 +213,6 @@ func (c *Converter) Convert(inputPath, outputPath string, progressChan chan<- Pr
 
 	updateProgress("Finalizing", 95, "Cleaning up temporary files...")
 
-	// Cleanup
-	for _, framePath := range framePaths {
-		os.Remove(framePath)
-	}
 
 	updateProgress("Complete", 100, "Successfully created .pixe file!")
 
